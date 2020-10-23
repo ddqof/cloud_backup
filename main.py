@@ -55,11 +55,14 @@ def main():
             file_operations.zip_directory(args.dir, filename)
             filename = filename + '.zip'
 
-        RemoteStorage.upload(filename, timestamp, args.storage)  # TODO: try upload
+        file_size = os.path.getsize(args.dir)
+        RemoteStorage.single_request_upload(filename=filename, storage=args.storage, directory=args.dir,
+                                            file_size=file_size)  # TODO: try upload
         print(RemoteStorage.gdrive_token)
 
         if os.path.exists(filename):
             os.remove(filename)
+
 
 # def ideal_main():
 #     args = parse_args()
@@ -68,7 +71,7 @@ def main():
 #         filename = args.dir
 #     try:
 #         RemoteStorage.upload(storage=args.storage, filename=filename)
-
+# TODO: подумать что делать с файлами токенов (может создавать их на ходу?)
 
 if __name__ == '__main__':
     main()
