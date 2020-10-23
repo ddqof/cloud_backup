@@ -1,4 +1,5 @@
 import json
+import os
 import mimetypes
 import datetime
 import re
@@ -8,7 +9,7 @@ import requests
 import configparser
 from getpass import getpass
 from .defaults import (GOOGLE_CREDENTIALS_PATH, GOOGLE_TOKEN_PATH, SUCCESS_MESSAGE_PATH,
-                       FAILURE_MESSAGE_PATH, REDIRECT_HOST, REDIRECT_PORT, API_KEY)
+                       FAILURE_MESSAGE_PATH, REDIRECT_HOST, REDIRECT_PORT)
 
 
 class RemoteStorage:
@@ -18,11 +19,12 @@ class RemoteStorage:
 
     def google_sign_in(self):
         config = configparser.ConfigParser()
-        config.read(GOOGLE_TOKEN_PATH)
-        if config['token']['expire_time'] != '0':
-            expire_time = eval(config['token']['expire_time'])
-            if datetime.datetime.now() < expire_time:
-                return config['token']['id']
+        if os.path.exists(GOOGLE_TOKEN_PATH):
+            config.read(GOOGLE_TOKEN_PATH)
+            if config['token']['expire_time'] != '0':
+                expire_time = eval(config['token']['expire_time'])
+                if datetime.datetime.now() < expire_time:
+                    return config['token']['id']
         with open(GOOGLE_CREDENTIALS_PATH) as f:
             creds = json.load(f)
         keys = {'client_id': creds['installed']['client_id'],
@@ -54,6 +56,7 @@ class RemoteStorage:
             'expires_in'])  # add seconds to current time
         try:
             access_token = r.json()['access_token']
+            config['token'] = {}
             config['token']['id'] = access_token
             config['token']['expire_time'] = repr(expire_time)
             with open(GOOGLE_TOKEN_PATH, 'w') as configfile:

@@ -56,8 +56,8 @@ def main():
             filename = filename + '.zip'
 
         file_size = os.path.getsize(args.dir)
-        RemoteStorage.single_request_upload(filename=filename, storage=args.storage, directory=args.dir,
-                                            file_size=file_size)  # TODO: try upload
+        # RemoteStorage.single_request_upload(filename=filename, storage=args.storage, directory=args.dir,
+        #                                     file_size=file_size)  # TODO: try upload
         print(RemoteStorage.gdrive_token)
 
         if os.path.exists(filename):
