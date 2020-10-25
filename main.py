@@ -56,12 +56,12 @@ def main():
             filename = filename + '.zip'
 
         file_size = os.path.getsize(args.dir)
-        # RemoteStorage.single_request_upload(filename=filename, storage=args.storage, directory=args.dir,
-        #                                     file_size=file_size)  # TODO: try upload
-        print(RemoteStorage.gdrive_token)
+        # RemoteStorage.multipart_request_upload_file(filename=filename, storage=args.storage, directory=args.dir,
+        #                                             file_size=file_size)
 
-        if os.path.exists(filename):
-            os.remove(filename)
+
+    # if os.path.exists(filename):
+    #     os.remove(filename)
 
 
 # def ideal_main():
