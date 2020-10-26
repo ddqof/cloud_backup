@@ -4,7 +4,6 @@ import argparse
 import os
 from datetime import datetime
 from cloudbackup import RemoteStorage
-from cloudbackup import file_operations
 
 
 def parse_args():
@@ -20,7 +19,7 @@ def parse_args():
                         help='specify remote storage name '
                              '(examples: gdrive, yadisk)',
                         type=str)
-    parser.add_argument('-d', '--dir',
+    parser.add_argument('-p', '--path',
                         metavar='',
                         help='specify directory that you want to back up',
                         type=str)
@@ -37,41 +36,11 @@ def parse_args():
 
 def main():
     args = parse_args()
-    timestamp = str(datetime.now()).split('.')[0]
+    filename = args.filename
+    if args.filename is None:
+        filename = args.path
+    RemoteStorage.upload(storage='gdrive', path='/home/ddqof/Videos/cons.mkv')
 
-    if args.storage:
-        if os.path.isfile(args.dir):  # check if args.dir is a file
-            file_size = os.path.getsize(args.dir)
-        elif os.path.isdir(args.dir):  # check if args.dir is a directory
-            file_size = file_operations.get_directory_size(args.dir)
-        else:
-            file_size = None
-
-        filename = args.filename
-        if args.filename is None:
-            filename = args.dir
-
-        if args.zip:
-            file_operations.zip_directory(args.dir, filename)
-            filename = filename + '.zip'
-
-        file_size = os.path.getsize(args.dir)
-        # RemoteStorage.multipart_request_upload_file(filename=filename, storage=args.storage, directory=args.dir,
-        #                                             file_size=file_size)
-
-
-    # if os.path.exists(filename):
-    #     os.remove(filename)
-
-
-# def ideal_main():
-#     args = parse_args()
-#     filename = args.filename
-#     if args.filename is None:
-#         filename = args.dir
-#     try:
-#         RemoteStorage.upload(storage=args.storage, filename=filename)
-# TODO: подумать что делать с файлами токенов (может создавать их на ходу?)
 
 if __name__ == '__main__':
     main()
