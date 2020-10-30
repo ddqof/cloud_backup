@@ -7,10 +7,8 @@ import socket
 import webbrowser
 import requests
 import configparser
-from collections import namedtuple
-
-from .defaults import (GOOGLE_CREDENTIALS_PATH, GOOGLE_TOKEN_PATH, SUCCESS_MESSAGE_PATH,
-                       FAILURE_MESSAGE_PATH, REDIRECT_HOST, REDIRECT_PORT)
+from .defaults import (GOOGLE_CREDENTIALS_PATH, GOOGLE_TOKEN_PATH,
+                       SUCCESS_MESSAGE_PATH, REDIRECT_HOST, REDIRECT_PORT)
 
 
 class GDrive:
@@ -86,33 +84,34 @@ class GDrive:
         r = requests.post('https://www.googleapis.com/drive/v3/files', headers=headers, data=json.dumps(metadata))
         print(r.json())
 
-    def _send_initial_request(self, filename, file_path):
+    def _send_initial_request(self, file_path):
+        filename = os.path.basename(file_path)
         headers = {
             'Content-type': 'application/json; charset=UTF-8',
             'Authorization': f'Bearer {self.token}',
-            'X-Upload-Content-Type': mimetypes.guess_type(os.path.join(file_path, filename))[0]
+            'X-Upload-Content-Type': mimetypes.guess_type(file_path)[0]
             # returns tuple (mimetype, encoding)
         }
         metadata = json.dumps({"name": filename})
         r = requests.post('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
                           headers=headers, data=metadata)
-        Response = namedtuple('Response', ['resumable_uri', 'headers'])
-        return Response(r.headers['location'], headers)
+        return r
 
-    def single_request_upload_file(self, filename, file_root):
-        response = self._send_initial_request(filename, file_root)
-        r = requests.put(response.resumable_uri, data=open(os.path.join(file_root, filename), 'rb').read(),
+    def single_upload(self, file_path):
+        response = self._send_initial_request(file_path)
+        resumable_uri = response.headers['location']
+        r = requests.put(resumable_uri, data=open(file_path, 'rb').read(),
                          headers=response.headers)
         print(r.status_code)
 
-    def multipart_request_upload_file(self, filename, file_root):
-        file_abs_path = os.path.join(file_root, filename)
-        file_size = os.path.getsize(file_abs_path)
-        response = self._send_initial_request(filename, file_root)
-        CHUNK_SIZE = 10 * 256 * 1024
+    def multipart_upload(self, file_path):
+        file_size = os.path.getsize(file_path)
+        response = self._send_initial_request(file_path)
+        CHUNK_SIZE = 256 * 1024
         headers = response.headers
+        resumable_uri = headers['location']
         uploaded_size = 0
-        with open(file_abs_path, 'rb') as file:
+        with open(file_path, 'rb') as file:
             while uploaded_size < file_size:
                 if CHUNK_SIZE > file_size:
                     CHUNK_SIZE = file_size
@@ -122,10 +121,12 @@ class GDrive:
                 headers['Content-Length'] = str(CHUNK_SIZE)
                 headers[
                     'Content-Range'] = f'bytes {str(uploaded_size)}-{str(uploaded_size + CHUNK_SIZE - 1)}/{file_size}'
-                r = requests.put(response.resumable_uri, data=file_data, headers=headers)
+                r = requests.put(resumable_uri, data=file_data, headers=headers)
                 uploaded_size += CHUNK_SIZE
                 print(r.status_code)
                 if r.status_code == 200:
                     print('Uploaded successfully')
                     return
-                file.seek(int(r.headers['range'].split('-')[1]))  # range header looks like start-end
+                diff = int(r.headers['range'].split('-')[
+                               1]) + 1 - uploaded_size  # range header looks like "bytes=0-n", where n - received bytes
+                file.seek(diff, 1)  # second parameter means seek relative to the current position
