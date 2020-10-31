@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import os
-from datetime import datetime
 from cloudbackup import RemoteStorage
 
 
@@ -31,7 +29,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    RemoteStorage.upload(storage='gdrive', file_abs_path='/home/ddqof/Downloads/PostmanAgent-linux-x64-0.0.2.tar.gz', multipart=True)
+    RemoteStorage.upload(storage='gdrive', file_abs_path='/home/ddqof/trap', multipart=True)
 
 
 if __name__ == '__main__':

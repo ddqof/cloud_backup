@@ -74,17 +74,18 @@ class GDrive:
         response = client.recv(1024).decode()
         return re.search('code=(.*)?&', response).group(1), client
 
-    def create_folder(self, name):
+    def create_folder(self, name, parent_id=None):
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.token}'
         }
         metadata = {'name': name,
-                    'mimeType': 'application/vnd.google-apps.folder'}
+                    'mimeType': 'application/vnd.google-apps.folder',
+                    'parents': [parent_id]}
         r = requests.post('https://www.googleapis.com/drive/v3/files', headers=headers, data=json.dumps(metadata))
-        print(r.json())
+        return r.json()['id']
 
-    def _send_initial_request(self, file_path):
+    def _send_initial_request(self, file_path, parent_id=None):
         filename = os.path.basename(file_path)
         headers = {
             'Content-type': 'application/json; charset=UTF-8',
@@ -92,21 +93,24 @@ class GDrive:
             'X-Upload-Content-Type': mimetypes.guess_type(file_path)[0]
             # returns tuple (mimetype, encoding)
         }
-        metadata = json.dumps({"name": filename})
+        metadata = {"name": filename}
+        if parent_id is not None:
+            metadata['parents'] = [parent_id]
+        metadata = json.dumps(metadata)
         r = requests.post('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
                           headers=headers, data=metadata)
         return r
 
-    def single_upload(self, file_path):
-        response = self._send_initial_request(file_path)
+    def single_upload(self, file_path, parent_id=None):
+        response = self._send_initial_request(file_path, parent_id)
         resumable_uri = response.headers['location']
         r = requests.put(resumable_uri, data=open(file_path, 'rb').read(),
                          headers=response.headers)
         print(r.status_code)
 
-    def multipart_upload(self, file_path):
+    def multipart_upload(self, file_path, parent_id=None):
         file_size = os.path.getsize(file_path)
-        response = self._send_initial_request(file_path)
+        response = self._send_initial_request(file_path, parent_id)
         CHUNK_SIZE = 256 * 1024
         headers = response.headers
         resumable_uri = headers['location']

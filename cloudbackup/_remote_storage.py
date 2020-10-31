@@ -18,16 +18,19 @@ class RemoteStorage:
             if os.path.isfile(file_abs_path):
                 gdrive_upload(file_abs_path)
             elif os.path.isdir(file_abs_path):
+                parents = {}
                 while True:
                     try:
-                        current_directory_objects = next(tree)  # tuple (dirpath, dirnames, filenames)
-                        if len(current_directory_objects[2]) == 0:
-                            return
-                        root = current_directory_objects[0]
-                        for file in current_directory_objects[2]:
-                            gdrive_upload(os.path.join(root, file))
-                        folder_name = root.split(os.path.sep)[-1]
-                        self.gdrive.create_folder(folder_name)
+                        root, dirs, filenames = next(tree)
+                        parent_id = parents[os.path.split(root)[0]] if parents else []
+                        # os.path.split returns pair (head, tail) of path
+                        folder_id = self.gdrive.create_folder(os.path.split(root)[-1],
+                                                              parent_id=parent_id)
+                        if not filenames:
+                            continue
+                        for file in filenames:
+                            gdrive_upload(os.path.join(root, file), parent_id=folder_id)
+                        parents[root] = folder_id
                     except StopIteration:
                         break
             else:
