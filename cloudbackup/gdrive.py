@@ -7,6 +7,7 @@ import socket
 import webbrowser
 import requests
 import configparser
+from urllib.parse import urlencode
 from .defaults import (GOOGLE_CREDENTIALS_PATH, GOOGLE_TOKEN_PATH,
                        SUCCESS_MESSAGE_PATH, REDIRECT_HOST, REDIRECT_PORT)
 
@@ -21,7 +22,6 @@ class GDrive:
             return config['token']['id']
         with open(GOOGLE_CREDENTIALS_PATH) as f:
             credentials = json.load(f)
-
             code, client_socket = self._get_access_code_and_client(credentials)
         exchange_keys = {
             'client_id': credentials['installed']['client_id'],
@@ -29,7 +29,6 @@ class GDrive:
             'code': code,
             'grant_type': 'authorization_code',
             'redirect_uri': 'http://127.0.0.1:8000'
-
         }
         r = requests.post('https://oauth2.googleapis.com/token',
                           data=exchange_keys)
@@ -61,15 +60,13 @@ class GDrive:
         keys = {'client_id': credentials['installed']['client_id'],
                 'redirect_uri': REDIRECT_HOST + ':' + str(REDIRECT_PORT),
                 'response_type': 'code',
-                'scope': 'https://www.googleapis.com/auth/drive'}
-        login_url = 'https://accounts.google.com/o/oauth2/v2/auth?scope={}' \
-                    '&redirect_uri={}&response_type={}&client_id={}'
+                'scope': 'https://www.googleapis.com/auth/drive.file'}
+        login_url = 'https://accounts.google.com/o/oauth2/v2/auth?' + urlencode(keys)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(('localhost', REDIRECT_PORT))
         s.listen()
-        webbrowser.open(
-            login_url.format(keys['scope'], keys['redirect_uri'], keys['response_type'], keys['client_id']))
+        webbrowser.open(login_url)
         client, addr = s.accept()
         response = client.recv(1024).decode()
         return re.search('code=(.*)?&', response).group(1), client
@@ -82,7 +79,8 @@ class GDrive:
         metadata = {'name': name,
                     'mimeType': 'application/vnd.google-apps.folder',
                     'parents': [parent_id]}
-        r = requests.post('https://www.googleapis.com/drive/v3/files', headers=headers, data=json.dumps(metadata))
+        r = requests.post('https://www.googleapis.com/drive/v3/files',
+                          headers=headers, data=json.dumps(metadata))
         return r.json()['id']
 
     def _send_initial_request(self, file_path, parent_id=None):
@@ -124,13 +122,14 @@ class GDrive:
                 file_data = file.read(CHUNK_SIZE)
                 headers['Content-Length'] = str(CHUNK_SIZE)
                 headers[
-                    'Content-Range'] = f'bytes {str(uploaded_size)}-{str(uploaded_size + CHUNK_SIZE - 1)}/{file_size}'
+                    'Content-Range'] =\
+                    f'bytes {str(uploaded_size)}-{str(uploaded_size + CHUNK_SIZE - 1)}/{file_size}'
                 r = requests.put(resumable_uri, data=file_data, headers=headers)
                 uploaded_size += CHUNK_SIZE
                 print(r.status_code)
                 if r.status_code == 200:
                     print('Uploaded successfully')
                     return
-                diff = int(r.headers['range'].split('-')[
-                               1]) + 1 - uploaded_size  # range header looks like "bytes=0-n", where n - received bytes
+                diff = int(r.headers['range'].split('-')[1]) + 1 - uploaded_size
+                # range header looks like "bytes=0-n", where n - received bytes
                 file.seek(diff, 1)  # second parameter means seek relative to the current position

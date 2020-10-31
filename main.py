@@ -21,15 +21,12 @@ def parse_args():
                         metavar='',
                         help='specify directory that you want to back up',
                         type=str)
-    parser.add_argument('-z', '--zip',
-                        help='compress your data using zip',
-                        action='store_true')
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    RemoteStorage.upload(storage='gdrive', file_abs_path='/home/ddqof/trap', multipart=True)
+    RemoteStorage.upload(storage='gdrive', file_abs_path='/home/ddqof/uni/ma/all_conspects', multipart=True)
 
 
 if __name__ == '__main__':
