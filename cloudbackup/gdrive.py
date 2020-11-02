@@ -14,7 +14,12 @@ from .defaults import (GOOGLE_CREDENTIALS_PATH, GOOGLE_TOKEN_PATH,
 
 class GDrive:
     def __init__(self):
+        self.scope = 'https://www.googleapis.com/auth/drive'
         self.token = self._authenticate()
+        self._auth_headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.token}'
+        }
 
     def _authenticate(self):
         config = configparser.ConfigParser()
@@ -60,7 +65,7 @@ class GDrive:
         keys = {'client_id': credentials['installed']['client_id'],
                 'redirect_uri': REDIRECT_HOST + ':' + str(REDIRECT_PORT),
                 'response_type': 'code',
-                'scope': 'https://www.googleapis.com/auth/drive.file'}
+                'scope': self.scope}
         login_url = 'https://accounts.google.com/o/oauth2/v2/auth?' + urlencode(keys)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -72,39 +77,71 @@ class GDrive:
         return re.search('code=(.*)?&', response).group(1), client
 
     def create_folder(self, name, parent_id=None):
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.token}'
+        metadata = {
+            'name': name,
+            'mimeType': 'application/vnd.google-apps.folder',
+            'parents': [parent_id] if parent_id else []
         }
-        metadata = {'name': name,
-                    'mimeType': 'application/vnd.google-apps.folder',
-                    'parents': [parent_id]}
         r = requests.post('https://www.googleapis.com/drive/v3/files',
-                          headers=headers, data=json.dumps(metadata))
+                          headers=self._auth_headers, data=json.dumps(metadata))
         return r.json()['id']
+
+    def get_files(self, trashed=False):
+        """
+        Return list of files on Google Drive storage
+        :param trashed: whether to show files that are in the trash
+        :return: JSON that includes files info
+        """
+        flags = {
+            'q': f'trashed={trashed}'
+        }
+        json_r = requests.get('https://www.googleapis.com/drive/v3/files', params=flags,
+                              headers=self._auth_headers).json()
+        assert 'files' in json_r
+        return json_r['files']
+
+    def download(self, file_id=None):
+        file_data = {'alt': 'media'}
+        r = requests.get(f'https://www.googleapis.com/drive/v3/files/{file_id}', params=file_data,
+                         headers=self._auth_headers)
+        # TODO: fix name of file to write
+        with open('Двойной интеграл.pdf', 'wb+') as f:
+            f.write(r.content)
+
+    def _delete(self, file_id):
+        """
+        Delete particular file with specified file_id
+        :param file_id: id of file in google drive system which need to delete
+        """
+        r = requests.request('DELETE', f'https://www.googleapis.com/drive/v3/files/{file_id}', headers = self._auth_headers)
+        print(r.text)
+
+    def _empty_trash(self):
+        """
+        Empty trash without ability to restore. Be careful!
+        """
+        r = requests.request('DELETE', 'https://www.googleapis.com/drive/v3/files/trash', headers=self._auth_headers)
 
     def _send_initial_request(self, file_path, parent_id=None):
         filename = os.path.basename(file_path)
         headers = {
-            'Content-type': 'application/json; charset=UTF-8',
-            'Authorization': f'Bearer {self.token}',
             'X-Upload-Content-Type': mimetypes.guess_type(file_path)[0]
             # returns tuple (mimetype, encoding)
         }
+        headers.update(self._auth_headers)
         metadata = {"name": filename}
         if parent_id is not None:
             metadata['parents'] = [parent_id]
         metadata = json.dumps(metadata)
-        r = requests.post('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
-                          headers=headers, data=metadata)
-        return r
+        return requests.post('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
+                             headers=headers, data=metadata)
 
     def single_upload(self, file_path, parent_id=None):
         response = self._send_initial_request(file_path, parent_id)
         resumable_uri = response.headers['location']
         r = requests.put(resumable_uri, data=open(file_path, 'rb').read(),
                          headers=response.headers)
-        print(r.status_code)
+        return r.json()
 
     def multipart_upload(self, file_path, parent_id=None):
         file_size = os.path.getsize(file_path)
@@ -122,14 +159,14 @@ class GDrive:
                 file_data = file.read(CHUNK_SIZE)
                 headers['Content-Length'] = str(CHUNK_SIZE)
                 headers[
-                    'Content-Range'] =\
+                    'Content-Range'] = \
                     f'bytes {str(uploaded_size)}-{str(uploaded_size + CHUNK_SIZE - 1)}/{file_size}'
                 r = requests.put(resumable_uri, data=file_data, headers=headers)
                 uploaded_size += CHUNK_SIZE
                 print(r.status_code)
                 if r.status_code == 200:
                     print('Uploaded successfully')
-                    return
+                    return r.json()
                 diff = int(r.headers['range'].split('-')[1]) + 1 - uploaded_size
                 # range header looks like "bytes=0-n", where n - received bytes
                 file.seek(diff, 1)  # second parameter means seek relative to the current position

@@ -26,7 +26,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    RemoteStorage.upload(storage='gdrive', file_abs_path='/home/ddqof/uni/ma/all_conspects', multipart=True)
+    RemoteStorage.gdrive.download(file_id='1gH-78rljivmClXhgFRbJd7hhk6wfqSAk')
 
 
 if __name__ == '__main__':

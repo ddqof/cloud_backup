@@ -8,7 +8,8 @@ class RemoteStorage:
         self.gdrive = gdrive.GDrive()
         self.yadisk = yadisk.YaDisk()
 
-    def upload(self, storage, file_abs_path=None, multipart=False):
+    def upload(self, storage, file_abs_path=None, multipart=True):
+        uploaded_files = []
         if multipart:
             gdrive_upload = self.gdrive.multipart_upload
         else:
@@ -16,7 +17,8 @@ class RemoteStorage:
         tree = os.walk(file_abs_path)
         if storage == 'gdrive':
             if os.path.isfile(file_abs_path):
-                gdrive_upload(file_abs_path)
+                res = gdrive_upload(file_abs_path)
+                uploaded_files.append(res)
             elif os.path.isdir(file_abs_path):
                 parents = {}
                 while True:
@@ -29,9 +31,11 @@ class RemoteStorage:
                         if not filenames:
                             continue
                         for file in filenames:
-                            gdrive_upload(os.path.join(root, file), parent_id=folder_id)
+                            res = gdrive_upload(os.path.join(root, file), parent_id=folder_id)
+                            uploaded_files.append(res)
                         parents[root] = folder_id
                     except StopIteration:
                         break
             else:
                 print('This directory or file doesn\'t exists')
+        return uploaded_files
