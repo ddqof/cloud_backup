@@ -6,28 +6,28 @@ from cloudbackup import RemoteStorage
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        usage='[-s] STORAGE_NAME [-d] DIRECTORY [-n] BACKUP_NAME [-z]',
-        prog='main.py',
-        description='''Tool for backing your data up on
-        Google Drive and Yandex.Disk.''',
-        epilog='''Author: Dmitry Podaruev <ddqof.vvv@gmail.com>'''
+        usage="[-s] STORAGE_NAME [-d] DIRECTORY [-n] BACKUP_NAME [-z]",
+        prog="main.py",
+        description="""Tool for backing your data up on
+        Google Drive and Yandex.Disk.""",
+        epilog="""Author: Dmitry Podaruev <ddqof.vvv@gmail.com>"""
     )
-    parser.add_argument('-s', '--storage',
-                        metavar='',
-                        help='specify remote storage name '
-                             '(examples: gdrive, yadisk)',
+    parser.add_argument("-s", "--storage",
+                        metavar="",
+                        help="specify remote storage name "
+                             "(examples: gdrive, yadisk)",
                         type=str)
-    parser.add_argument('-p', '--path',
-                        metavar='',
-                        help='specify directory that you want to back up',
+    parser.add_argument("-p", "--path",
+                        metavar="",
+                        help="specify directory that you want to back up",
                         type=str)
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    RemoteStorage.gdrive.download(file_id='1gH-78rljivmClXhgFRbJd7hhk6wfqSAk')
+    RemoteStorage.gdrive.download(file_id="1gH-78rljivmClXhgFRbJd7hhk6wfqSAk")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

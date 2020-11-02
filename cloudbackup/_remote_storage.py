@@ -15,7 +15,7 @@ class RemoteStorage:
         else:
             gdrive_upload = self.gdrive.single_upload
         tree = os.walk(file_abs_path)
-        if storage == 'gdrive':
+        if storage == "gdrive":
             if os.path.isfile(file_abs_path):
                 res = gdrive_upload(file_abs_path)
                 uploaded_files.append(res)
@@ -37,5 +37,5 @@ class RemoteStorage:
                     except StopIteration:
                         break
             else:
-                print('This directory or file doesn\'t exists')
+                print("This directory or file doesn\'t exists")
         return uploaded_files
