@@ -23,6 +23,9 @@ class GDrive:
         self.files = self.get_files()
 
     def _authenticate(self):
+        """
+        :return: token to access to Google Drive API
+        """
         config = configparser.ConfigParser()
         if self._token_is_valid(config):
             return config["token"]["id"]
@@ -54,6 +57,11 @@ class GDrive:
         return access_token
 
     def _token_is_valid(self, config):
+        """
+
+        :param config:
+        :return:
+        """
         if os.path.exists(GOOGLE_TOKEN_PATH):
             config.read(GOOGLE_TOKEN_PATH)
             if config["token"]["expire_time"] != "0":
@@ -91,7 +99,7 @@ class GDrive:
         """
         Return list of files on Google Drive storage
         :param trashed: whether to show files that are in the trash
-        :return: JSON that includes files info
+        :return: JSON file that includes files info
         """
         flags = {
             "q": f"trashed={trashed}"
@@ -103,7 +111,8 @@ class GDrive:
 
     def get_filename_by_id(self, filename):
         """
-        Return id by filename
+        Return id by filename.
+        Raise `FileNotFoundError` if there is no file with `filename` on Google Drive storage.
         """
         for file in self.files:
             if file["name"] == filename:
@@ -113,7 +122,7 @@ class GDrive:
     def download(self, filename=None):
         """
         :param filename: filename to download
-        :return: bytes of downloaded file
+        :return: raw bytes of downloaded file
         """
         file_id = self.get_filename_by_id(filename)
         file_data = {"alt": "media"}
@@ -124,7 +133,7 @@ class GDrive:
     def _delete(self, filename):
         """
         Permanently deletes a file by filename. Skips the trash. Be careful!
-        :param file_id: id of file in google drive system which need to delete
+        :param file_id: id of file in Google Drive system which need to delete
         """
         file_id = self.get_filename_by_id(filename)
         r = requests.request("DELETE", f"https://www.googleapis.com/drive/v3/files/{file_id}",
@@ -139,6 +148,12 @@ class GDrive:
                              headers=self._auth_headers)
 
     def _send_initial_request(self, file_path, parent_id=None):
+        """
+        Send initial request to prepare API to receive further requests to upload
+        :param file_path: absolute path to file for upload
+        :param parent_id: (optional) id of parent folder passed in `file_path`
+        :return: response from API
+        """
         filename = os.path.basename(file_path)
         headers = {
             "X-Upload-Content-Type": mimetypes.guess_type(file_path)[0]
@@ -153,6 +168,13 @@ class GDrive:
                              headers=headers, data=metadata)
 
     def single_upload(self, file_path, parent_id=None):
+        """
+        Perform upload by one single request. Faster than multipart upload,
+        but not renewable after lost connection.
+        :param file_path: absolute path to file for upload
+        :param parent_id: (optional) id of parent folder passed in `file_path`
+        :return:
+        """
         response = self._send_initial_request(file_path, parent_id)
         resumable_uri = response.headers["location"]
         r = requests.put(resumable_uri, data=open(file_path, "rb").read(),
@@ -160,6 +182,13 @@ class GDrive:
         return r.json()
 
     def multipart_upload(self, file_path, parent_id=None):
+        """
+        Perform upload by few little requests. Slower than single upload,
+        but more safer with unstable connection.
+        :param file_path: absolute path to file for upload
+        :param parent_id: (optional) id of parent folder passed in `file_path`
+        :return:
+        """
         file_size = os.path.getsize(file_path)
         response = self._send_initial_request(file_path, parent_id)
         CHUNK_SIZE = 256 * 1024
