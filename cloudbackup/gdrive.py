@@ -20,6 +20,7 @@ class GDrive:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.token}"
         }
+        self.files = self.get_files()
 
     def _authenticate(self):
         config = configparser.ConfigParser()
@@ -95,32 +96,47 @@ class GDrive:
         flags = {
             "q": f"trashed={trashed}"
         }
-        json_r = requests.get("https://www.googleapis.com/drive/v3/files", params=flags,
-                              headers=self._auth_headers).json()
+        json_r = requests.get("https://www.googleapis.com/drive/v3/files",
+                              params=flags, headers=self._auth_headers).json()
         assert "files" in json_r
         return json_r["files"]
 
-    def download(self, file_id=None):
-        file_data = {"alt": "media"}
-        r = requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}", params=file_data,
-                         headers=self._auth_headers)
-        # TODO: fix name of file to write
-        with open("Двойной интеграл.pdf", "wb+") as f:
-            f.write(r.content)
-
-    def _delete(self, file_id):
+    def get_filename_by_id(self, filename):
         """
-        Delete particular file with specified file_id
+        Return id by filename
+        """
+        for file in self.files:
+            if file["name"] == filename:
+                return file["id"]
+        raise FileNotFoundError
+
+    def download(self, filename=None):
+        """
+        :param filename: filename to download
+        :return: bytes of downloaded file
+        """
+        file_id = self.get_filename_by_id(filename)
+        file_data = {"alt": "media"}
+        return requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                            params=file_data,
+                            headers=self._auth_headers).content
+
+    def _delete(self, filename):
+        """
+        Permanently deletes a file by filename. Skips the trash. Be careful!
         :param file_id: id of file in google drive system which need to delete
         """
-        r = requests.request("DELETE", f"https://www.googleapis.com/drive/v3/files/{file_id}", headers = self._auth_headers)
+        file_id = self.get_filename_by_id(filename)
+        r = requests.request("DELETE", f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                             headers=self._auth_headers)
         print(r.text)
 
     def _empty_trash(self):
         """
         Empty trash without ability to restore. Be careful!
         """
-        r = requests.request("DELETE", "https://www.googleapis.com/drive/v3/files/trash", headers=self._auth_headers)
+        r = requests.request("DELETE", "https://www.googleapis.com/drive/v3/files/trash",
+                             headers=self._auth_headers)
 
     def _send_initial_request(self, file_path, parent_id=None):
         filename = os.path.basename(file_path)
