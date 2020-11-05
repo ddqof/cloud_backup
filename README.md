@@ -12,8 +12,10 @@ It's simple tool for backing your data up on Google Drive and Yandex.Disk cloud 
 
 ## Usage
 
-Example of usage: `./cloud_backup.py -s REMOTE_STORAGE -p PATH`
-* `REMOTE_STORAGE` is name of remote storage
-(if you want to use Google Drive, then type `gdrive`)
-* use argument `-z` if you want to compress your folder
-* `PATH` is directory that you want to back up
+For now it only works with Google Drive. So if you just launch, you will operate with your Google Drive storage.
+To launch type: `./main.py` and then use unix commands:
+* `ls` to list all files on remote storage. Be careful! It deletes without ability to restore.
+* `ul filename` to upload file called filename.
+* `rm filename` to delete file called filename. 
+* `dl filename [path]` for download file called filename to path (if not specified then upload to pwd)
+*  `exit` to exit
