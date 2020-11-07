@@ -30,6 +30,8 @@ class GDrive:
         elif os.path.isdir(file_abs_path):
             parents = {}
             for root, dirs, filenames in tree:
+                if root.endswith(os.path.sep):
+                    root = root[:-1]
                 parent_id = parents[os.path.split(root)[0]] if parents else []
                 # os.path.split returns pair (head, tail) of path
                 folder_id = self._create_folder(os.path.split(root)[-1],
