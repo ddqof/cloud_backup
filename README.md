@@ -10,13 +10,19 @@ It's simple tool for backing your data up on Google Drive and Yandex.Disk cloud 
 
 * see `requirements.txt`
 
-## Usage
+## Examples of usage
 
-For now it only works with Google Drive. So if you just launch, you will operate with your Google Drive storage.
-To launch type: `./main.py` and then use unix commands:
-* `ls` to list all files on remote storage.
-* `ul filename` to upload file called `filename`.
-* `rm filename` to delete file called `filename`. Be careful! It deletes without ability to restore.
-* `dl filename [path]` for download file called `filename` to `path` (if not specified then upload to pwd)
-* `cd directory` to change present working directory to `directory`
-*  `exit` to exit
+### List
+* `./main.py -ls` to list all files on remote storage.
+* `./main.py -ls -id root` to list all files in `root` directory
+
+### Upload
+* `./main.py -ul -p /home/user` to upload directory `/home/user` to root directory.
+* `./main.py -ul -p /home/user/test.py` to upload `test.py` file to root directory.
+
+### Downloading
+* `./main.py -dl -id 0xyz` to download file with id starts with `0xyz` in current working directory
+* `./main.py -dl -id 0xyz -p /home/user` to download file with id starts with `0xyz` to `/home/user` directory
+
+### Delete
+* `./main.py -rm -id 0xyz` to delete file or directory with id starts with `0xyz`. Be careful! It deletes without ability to restore.
