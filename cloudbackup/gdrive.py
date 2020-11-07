@@ -65,13 +65,18 @@ class GDrive:
 
     def list_files(self, folder_id=None):
         """
-        Return dict of files which contain pairs like file_name: mimeType
+        Return dict of files like dict: {'kind': '', 'id': '', 'name': '', 'mimeType': ''}
         """
         if folder_id == "" or folder_id is None:
             return self.all_files
         return self._get_files(parent_id=folder_id)
 
     def autocomplete_id(self, id):
+        """
+        Return id that starts with given id
+        :param id: start id
+        :return: completed id
+        """
         if id is None or id == "root":
             return id
         for file in self.all_files:
@@ -80,6 +85,12 @@ class GDrive:
         return None
 
     def _create_folder(self, name, parent_id=None):
+        """
+        Create folder in Google Drive storage
+        :param name: folder name
+        :param parent_id: ids of parents of this folder
+        :return: id of created folder
+        """
         metadata = {
             "name": name,
             "mimeType": "application/vnd.google-apps.folder",
@@ -122,8 +133,8 @@ class GDrive:
 
     def delete(self, file_id):
         """
-        Permanently deletes  a filename. Skips the trash. Be careful!
-        :param filename: filename that should be deleted
+        Permanently deletes  a filename by id. Skips the trash. Be careful!
+        :param file_id: id of file that should be deleted
         """
         r = requests.request("DELETE", f"https://www.googleapis.com/drive/v3/files/{file_id}",
                              headers=self._auth_headers)
@@ -197,7 +208,6 @@ class GDrive:
                 uploaded_size += CHUNK_SIZE
                 print(r.status_code)
                 if r.status_code == 200:
-                    print("Chunk uploaded successfully")
                     break
                 diff = int(r.headers["range"].split("-")[1]) + 1 - uploaded_size
                 # range header looks like "bytes=0-n", where n - received bytes

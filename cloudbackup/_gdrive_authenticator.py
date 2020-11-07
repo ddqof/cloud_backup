@@ -74,7 +74,6 @@ class GDriveAuth:
                 "access_type": "offline",
                 }
         login_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(keys)
-        print(login_url)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(("localhost", REDIRECT_PORT))

@@ -16,6 +16,7 @@ def parse_args():
                         metavar="",
                         help="specify remote storage name"
                              "(examples: gdrive, yadisk)",
+                        required=True,
                         type=str)
     parser.add_argument("-ls", "--list",
                         action="store_true",
@@ -57,7 +58,8 @@ def cli_handler(args):
     if args.upload:
         print(gdrive.upload(file_abs_path=args.path))
     if args.remove:
-        print(gdrive.delete(file_id=gdrive.autocomplete_id(args.id)))
+        print("deletion isn't supported in this version")
+        # print(gdrive.delete(file_id=gdrive.autocomplete_id(args.id)))
 
 
 def main():

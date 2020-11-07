@@ -13,7 +13,7 @@ It's simple tool for backing your data up on Google Drive and Yandex.Disk cloud 
 ## Examples of usage
 
 ### List
-* `./main.py -ls` to list all files on remote storage.
+* `./main.py -ls` to list all files (directories marked cyan color) on remote storage.
 * `./main.py -ls -id root` to list all files in `root` directory
 
 ### Upload
