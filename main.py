@@ -3,69 +3,66 @@
 import argparse
 from colorama import init, Fore, Style
 from cloudbackup.gdrive import GDrive
-import re
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        usage="[-s] STORAGE_NAME",
+        usage="[-s] STORAGE_NAME [-dl] [-ls] [-rm] [-ul] [-id] ID [-p] PATH",
         prog="main.py",
-        description="""Tool for backing your data up on
-        Google Drive.\nUse commands the following commands:\n
-        `ls` for list all files,\n
-        `dl filename [path]` for download file called filename to path (if not specified then upload to pwd,\n
-        `rm filename` to delete file called filename. Be careful! It deletes without ability to restore,\n
-        `exit` to exit.""",
+        description="""Tool for operate with your files on Google Drive storage""",
         epilog="""Author: Dmitry Podaruev <ddqof.vvv@gmail.com>"""
     )
     parser.add_argument("-s", "--storage",
                         metavar="",
-                        help="specify remote storage name "
+                        help="specify remote storage name"
                              "(examples: gdrive, yadisk)",
                         type=str)
+    parser.add_argument("-ls", "--list",
+                        action="store_true",
+                        help="list files"
+                             "(if path not specified list all files)")
+    parser.add_argument("-dl", "--download",
+                        action="store_true",
+                        help="download file")
+    parser.add_argument("-p", "--path",
+                        metavar="",
+                        help="specify path and pass it with -dl argument "
+                             "to download file to specific directory")
+    parser.add_argument("-rm", '--remove',
+                        action="store_true",
+                        help="remove file "
+                             "(be careful! it deletes without ability to restore)")
+    parser.add_argument("-ul", "--upload",
+                        action="store_true",
+                        help="upload file")
+    parser.add_argument("-id",
+                        metavar="",
+                        help="id of file in Google Drive storage")
+
     return parser.parse_args()
 
 
-def cli_handler():
+def cli_handler(args):
     gdrive = GDrive()
-    while True:
-        args = re.search(r"(\w{1,3}) ?(.*)", input())
-        command = args.group(1)
-        key = args.group(2)
-        if command == "ls":
-            files = gdrive.list_files()
-            for filename in files:
-                if files[filename] == "application/vnd.google-apps.folder":
-                    print(Fore.CYAN + filename + Style.RESET_ALL)
-                else:
-                    print(filename)
-        elif command == "dl":
-            if len(args.groups()) == 2:
-                print(gdrive.download(filename=key))
+    if args.list:
+        files = gdrive.list_files(gdrive.autocomplete_id(args.id))
+        for filename in files:
+            default_view = filename["name"] + " " + f"({filename['id']})"
+            if filename["mimeType"] == "application/vnd.google-apps.folder":
+                print("".join(Fore.CYAN + default_view + Style.RESET_ALL))
             else:
-                file = key.split()[0]
-                path = key.split()[1]
-                print(gdrive.download(filename=file, path=path))
-        elif command == "ul":
-            print(gdrive.upload(file_abs_path=key))
-        elif command == "rm":
-            print(gdrive.delete(filename=key))
-        elif command == "cd":
-            try:
-                print(gdrive.change_directory(directory=gdrive.directories_history[-2] if key == ".." else key))
-            except IndexError:
-                print("Switched to root")
-        elif command == "pwd":
-            print(gdrive.current_directory)
-        elif command == "exit":
-            return
-        else:
-            print("Wrong command")
+                print(default_view)
+    if args.download:
+        print(gdrive.download(gdrive.autocomplete_id(args.id), path=args.path))
+    if args.upload:
+        print(gdrive.upload(file_abs_path=args.path))
+    if args.remove:
+        print(gdrive.delete(file_id=gdrive.autocomplete_id(args.id)))
 
 
 def main():
     init()
-    cli_handler()
+    cli_handler(parse_args())
 
 
 if __name__ == "__main__":
