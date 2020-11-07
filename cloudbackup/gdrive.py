@@ -1,94 +1,17 @@
 import json
 import os
 import mimetypes
-import datetime
-import re
-import socket
-import webbrowser
 import requests
-import configparser
-from urllib.parse import urlencode
-from .defaults import (GOOGLE_CREDENTIALS_PATH, GOOGLE_TOKEN_PATH,
-                       SUCCESS_MESSAGE_PATH, REDIRECT_HOST, REDIRECT_PORT)
+from cloudbackup._gdrive_authenticator import GDriveAuth
 
 
 class GDrive:
     def __init__(self):
-        self.scope = "https://www.googleapis.com/auth/drive"
-        self.token = self._authenticate()
         self._auth_headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.token}"
+            "Authorization": f"Bearer {GDriveAuth().authenticate()}"
         }
-        self.directories_history = ["root"]
-        self.current_directory = "root"
-        self.files = self._get_files()
-
-    def _authenticate(self):
-        """
-        :return: token to access to Google Drive API
-        """
-        config = configparser.ConfigParser()
-        if self._token_is_valid(config):
-            return config["token"]["id"]
-        with open(GOOGLE_CREDENTIALS_PATH) as f:
-            credentials = json.load(f)
-            code, client_socket = self._get_access_code_and_client(credentials)
-        exchange_keys = {
-            "client_id": credentials["installed"]["client_id"],
-            "client_secret": credentials["installed"]["client_secret"],
-            "code": code,
-            "grant_type": "authorization_code",
-            "redirect_uri": "http://127.0.0.1:8000"
-        }
-        r = requests.post("https://oauth2.googleapis.com/token",
-                          data=exchange_keys)
-        expire_time = datetime.datetime.now() + datetime.timedelta(0, r.json()[
-            "expires_in"])  # add seconds to current time
-
-        access_token = r.json()["access_token"]
-        config["token"] = {}
-        config["token"]["id"] = access_token
-        config["token"]["expire_time"] = repr(expire_time)
-
-        with open(GOOGLE_TOKEN_PATH, "w") as configfile:
-            config.write(configfile)
-        with open(SUCCESS_MESSAGE_PATH) as f:
-            message = f"HTTP/1.1 200 OK\r\n\r\n{f.read()}"
-        client_socket.send(message.encode())
-        return access_token
-
-    def _token_is_valid(self, config):
-        """
-        :param config: config where token is stored
-        :return: whether token expired
-        """
-        if os.path.exists(GOOGLE_TOKEN_PATH):
-            config.read(GOOGLE_TOKEN_PATH)
-            if config["token"]["expire_time"] != "0":
-                expire_time = eval(config["token"]["expire_time"])
-                if datetime.datetime.now() < expire_time:
-                    return True
-        return False
-
-    def _get_access_code_and_client(self, credentials):
-        """
-        :param credentials: credentials to access Google Drive api
-        :return: client socket and access code to Google Drive api
-        """
-        keys = {"client_id": credentials["installed"]["client_id"],
-                "redirect_uri": REDIRECT_HOST + ":" + str(REDIRECT_PORT),
-                "response_type": "code",
-                "scope": self.scope}
-        login_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(keys)
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind(("localhost", REDIRECT_PORT))
-        s.listen()
-        webbrowser.open(login_url)
-        client, addr = s.accept()
-        response = client.recv(1024).decode()
-        return re.search("code=(.*)?&", response).group(1), client
+        self.all_files = self._get_files(list_all=True)
 
     def upload(self, file_abs_path=None, multipart=True):
         """
@@ -116,21 +39,21 @@ class GDrive:
                 for file in filenames:
                     upload(os.path.join(root, file), parent_id=folder_id)
                 parents[root] = folder_id
-                return "Download completed"
+            return "Upload completed"
         else:
             return "This directory or file doesn\'t exists"
 
-    def download(self, filename, path=None):
+    def download(self, file_id, path=None):
         """
         Download file to Google Drive storage
-        :param filename: name of file to download
+        :param file_id: name of file to download
         :param path: (optional) pass absolute path where you want to store downloaded file
         :return: status message
         """
         try:
-            file_bytes = self._download_file(filename=filename)
+            file_bytes, filename = self._download_file(request_file_id=file_id)
         except FileNotFoundError:
-            return f"File: `{filename}` not found"
+            return f"File: starts with `{file_id}` id not found"
         if path is None:
             dl_path = filename
             path = "present working"
@@ -138,31 +61,23 @@ class GDrive:
             dl_path = os.path.join(path, filename)
         with open(dl_path, "wb+") as f:
             f.write(file_bytes)
-        return f"Successfully download file: {filename} to {path} directory"
+            return f"Successfully download file: {filename} to {path} directory"
 
-    def list_files(self):
+    def list_files(self, folder_id=None):
         """
         Return dict of files which contain pairs like file_name: mimeType
         """
-        files = {}
-        for line in self.files:
-            files[line["name"]] = line["mimeType"]
-        return files
+        if folder_id == "" or folder_id is None:
+            return self.all_files
+        return self._get_files(parent_id=folder_id)
 
-    def change_directory(self, directory):
-        if len(self.directories_history) > 1 and directory == self.directories_history[-2]:
-            self.directories_history.pop()
-            self.current_directory = directory
-            self.files = self._get_files()
-            return f"Switched to {directory}"
-        else:
-            for file in self.files:
-                if file["name"] == directory:
-                    self.directories_history.append(directory)
-                    self.current_directory = directory
-                    self.files = self._get_files()
-                    return f"Switched to {directory}"
-        return f"{directory}: No such directory"
+    def autocomplete_id(self, id):
+        if id is None or id == "root":
+            return id
+        for file in self.all_files:
+            if file["id"].startswith(id):
+                return file["id"]
+        return None
 
     def _create_folder(self, name, parent_id=None):
         metadata = {
@@ -174,52 +89,42 @@ class GDrive:
                           headers=self._auth_headers, data=json.dumps(metadata))
         return r.json()["id"]
 
-    def _get_files(self, trashed=False, list_all=False):
+    def _get_files(self, parent_id=None, trashed=False, list_all=False):
         """
         Return list of files on Google Drive storage
         :param trashed: whether to show files that are in the trash
+        :param list_all: whether to list all files and directories on storage
         :return: JSON file that includes files info
         """
-        if self.current_directory == "root":
-            flags = {
-                "q": f"trashed={trashed}" if list_all
-                else f"trashed={trashed} and 'root' in parents"
-            }
-        else:
-            flags = {
-                "q": f"trashed={trashed}" if list_all
-                else f"trashed={trashed} and '{self._get_id_by_filename(self.directories_history[-1])}' in parents"
-            }
-
+        flags = {
+            "q": f"trashed={trashed}" if list_all
+            else f"trashed={trashed} and '{parent_id}' in parents"
+        }
         json_r = requests.get("https://www.googleapis.com/drive/v3/files",
                               params=flags, headers=self._auth_headers).json()
         return json_r["files"]
 
-    def _get_id_by_filename(self, filename):
+    def _download_file(self, request_file_id=None):
         """
-        Return id by filename.
+        :param request_file_id: file id to download
+        :return: tuple: (raw bytes of downloaded file, filename)
         """
-        for file in self._get_files(list_all=True):
-            if file["name"] == filename:
-                return file["id"]
-
-    def _download_file(self, filename=None):
-        """
-        :param filename: filename to download
-        :return: raw bytes of downloaded file
-        """
-        file_id = self._get_id_by_filename(filename)
+        file_id = None
+        filename = None
+        for file in self.all_files:
+            if file["id"].startswith(request_file_id):
+                file_id = file["id"]
+                filename = file["name"]
         file_data = {"alt": "media"}
-        return requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                            params=file_data,
-                            headers=self._auth_headers).content
+        return (requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                             params=file_data,
+                             headers=self._auth_headers).content, filename)
 
-    def delete(self, filename):
+    def delete(self, file_id):
         """
         Permanently deletes  a filename. Skips the trash. Be careful!
         :param filename: filename that should be deleted
         """
-        file_id = self._get_id_by_filename(filename)
         r = requests.request("DELETE", f"https://www.googleapis.com/drive/v3/files/{file_id}",
                              headers=self._auth_headers)
         print(r.text)
