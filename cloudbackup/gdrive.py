@@ -47,7 +47,7 @@ class GDrive:
 
     def download(self, file_id, path=None):
         """
-        Download file to Google Drive storage
+        Download file from Google Drive storage
         :param file_id: name of file to download
         :param path: (optional) pass absolute path where you want to store downloaded file
         :return: status message
@@ -67,7 +67,7 @@ class GDrive:
 
     def list_files(self, folder_id=None):
         """
-        Return dict of files like dict: {'kind': '', 'id': '', 'name': '', 'mimeType': ''}
+        Return dict: {'kind': '', 'id': '', 'name': '', 'mimeType': ''}
         """
         if folder_id == "" or folder_id is None:
             return self.all_files

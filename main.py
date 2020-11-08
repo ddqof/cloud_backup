@@ -3,7 +3,7 @@
 import argparse
 from colorama import init, Fore, Style
 from cloudbackup.gdrive import GDrive
-
+from cloudbackup.yadisk_authenticator import YaDiskAuth
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -64,7 +64,10 @@ def cli_handler(args):
 
 def main():
     init()
-    cli_handler(parse_args())
+    # cli_handler(parse_args())
+    gdrive = YaDiskAuth().authenticate()
+    print(gdrive)
+
 
 
 if __name__ == "__main__":
