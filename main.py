@@ -64,9 +64,7 @@ def cli_handler(args):
 
 def main():
     init()
-    # cli_handler(parse_args())
-    gdrive = YaDiskAuth().authenticate()
-    print(gdrive)
+    cli_handler(parse_args())
 
 
 

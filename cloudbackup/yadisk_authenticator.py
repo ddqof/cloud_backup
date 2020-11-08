@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 from .defaults import (YANDEX_CREDENTIALS_PATH, SUCCESS_MESSAGE_PATH,
                        FAILURE_MESSAGE_PATH, YANDEX_TOKEN_PATH)
 from ._local_server import LocalServer
+from ._file_operations import FileOperations
 
 
 class YaDiskAuth:
@@ -16,7 +17,7 @@ class YaDiskAuth:
         Get the access token to YandexDisk API requests
         :return: status message: access token or denied access message
         """
-        token = self._check_token()
+        token = FileOperations.check_token(YANDEX_TOKEN_PATH)
         if token is not None:
             return token
         with open(YANDEX_CREDENTIALS_PATH) as f:
@@ -39,7 +40,7 @@ class YaDiskAuth:
                 message = f"HTTP/1.1 200 OK\r\n\r\n{f.read()}"
             token_data = {
                 "token": r["access_token"],
-                "expire_time": datetime.datetime.now() + datetime.timedelta(0, r["expires_in"])
+                "expire_time": repr(datetime.datetime.now() + datetime.timedelta(0, r["expires_in"]))
                 # add seconds to current time
             }
             with open(YANDEX_TOKEN_PATH, "wb") as f:
@@ -53,15 +54,3 @@ class YaDiskAuth:
             status = error_msg
         client.send(message.encode())
         return status
-
-    def _check_token(self):
-        """
-        :return: token if it's not expired, else None
-        """
-        if os.path.exists(YANDEX_TOKEN_PATH):
-            with open(YANDEX_TOKEN_PATH) as f:
-                token_data = pickle.load(f)
-                expire_time = eval(token_data["expire_time"])
-                if datetime.datetime.now() < expire_time:
-                    return token_data["token"]
-        return None
