@@ -6,16 +6,14 @@ import re
 import requests
 from urllib.parse import urlencode
 from .defaults import (GOOGLE_CREDENTIALS_PATH, GOOGLE_TOKEN_PATH,
-                       SUCCESS_MESSAGE_PATH, REDIRECT_HOST, REDIRECT_PORT)
+                       SUCCESS_MESSAGE_PATH, REDIRECT_HOST, REDIRECT_PORT, GDRIVE_SCOPE)
 from ._local_server import LocalServer
 from ._file_operations import FileOperations
 
 
 class GDriveAuth:
-    def __init__(self):
-        self.scope = "https://www.googleapis.com/auth/drive"
-
-    def authenticate(self):
+    @staticmethod
+    def authenticate():
         """
         :return: token to access to Google Drive API
         """
@@ -24,7 +22,7 @@ class GDriveAuth:
             return token
         with open(GOOGLE_CREDENTIALS_PATH) as f:
             credentials = json.load(f)
-            code, client = self._get_access_code_and_client(credentials)
+            code, client = GDriveAuth._get_access_code_and_client(credentials)
         exchange_keys = {
             "client_id": credentials["installed"]["client_id"],
             "client_secret": credentials["installed"]["client_secret"],
@@ -36,7 +34,7 @@ class GDriveAuth:
                                    data=exchange_keys).json()
         token_data = {
             "token": json_reply["access_token"],
-            "expire_time": (datetime.datetime.now() + datetime.timedelta(0, json_reply["expires_in"]))
+            "expire_time": datetime.datetime.now() + datetime.timedelta(0, json_reply["expires_in"])
             # add seconds to current time
         }
         with open(GOOGLE_TOKEN_PATH, "wb") as f:
@@ -46,7 +44,8 @@ class GDriveAuth:
         client.send(message.encode())
         return token_data["token"]
 
-    def _get_access_code_and_client(self, credentials):
+    @staticmethod
+    def _get_access_code_and_client(credentials):
         """
         :param credentials: credentials to access Google Drive api
         :return: client socket and access code to Google Drive api
@@ -54,7 +53,7 @@ class GDriveAuth:
         keys = {"client_id": credentials["installed"]["client_id"],
                 "redirect_uri": f"{REDIRECT_HOST}:{str(REDIRECT_PORT)}",
                 "response_type": "code",
-                "scope": self.scope,
+                "scope": GDRIVE_SCOPE,
                 "access_type": "offline",
                 }
         login_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(keys)

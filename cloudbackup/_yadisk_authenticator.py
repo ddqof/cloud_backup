@@ -1,5 +1,4 @@
 import json
-import os
 import pickle
 import datetime
 import re
@@ -12,7 +11,8 @@ from ._file_operations import FileOperations
 
 
 class YaDiskAuth:
-    def authenticate(self):
+    @staticmethod
+    def authenticate():
         """
         Get the access token to YandexDisk API requests
         :return: status message: access token or denied access message
@@ -40,7 +40,7 @@ class YaDiskAuth:
                 message = f"HTTP/1.1 200 OK\r\n\r\n{f.read()}"
             token_data = {
                 "token": r["access_token"],
-                "expire_time": repr(datetime.datetime.now() + datetime.timedelta(0, r["expires_in"]))
+                "expire_time": datetime.datetime.now() + datetime.timedelta(0, r["expires_in"])
                 # add seconds to current time
             }
             with open(YANDEX_TOKEN_PATH, "wb") as f:
