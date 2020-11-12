@@ -9,7 +9,7 @@ class GDrive:
     def __init__(self):
         self._auth_headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {GDriveAuth().authenticate()}"
+            "Authorization": f"Bearer {GDriveAuth.authenticate()}"
         }
         self.all_files = self._get_files(list_all=True)
 
@@ -125,7 +125,7 @@ class GDrive:
         file_id = None
         filename = None
         for file in self.all_files:
-            if file["id"].startswith(request_file_id):
+            if file["id"] == request_file_id:
                 file_id = file["id"]
                 filename = file["name"]
         file_data = {"alt": "media"}
@@ -178,7 +178,9 @@ class GDrive:
         """
         response = self._send_initial_request(file_path, parent_id)
         resumable_uri = response.headers["location"]
-        r = requests.put(resumable_uri, data=open(file_path, "rb").read(),
+        with open(file_path, "rb") as f:
+            file_data = f.read()
+        r = requests.put(resumable_uri, data=file_data,
                          headers=response.headers)
         return r.json()
 

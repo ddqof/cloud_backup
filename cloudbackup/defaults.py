@@ -8,3 +8,4 @@ SUCCESS_MESSAGE_PATH = os.path.join(os.path.dirname(__file__), "service", "succe
 FAILURE_MESSAGE_PATH = os.path.join(os.path.dirname(__file__), "service", "failure_message.html")
 REDIRECT_HOST = "http://127.0.0.1"
 REDIRECT_PORT = 8000
+GDRIVE_SCOPE = "https://www.googleapis.com/auth/drive"
