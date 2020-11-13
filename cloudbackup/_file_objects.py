@@ -25,3 +25,16 @@ class YaDiskFile:
 
     def __str__(self):
         return f"YaDiskFileObject: {self.name}"
+
+
+class GDriveFile:
+    """
+    Class represents file object on Google Drive storage
+    """
+    def __init__(self, meta_inf):
+        self.id = meta_inf["id"]
+        self.name = meta_inf["name"]
+        self.mime_type = meta_inf["mimeType"]
+
+    def __str__(self):
+        return f"GDriveFileObject: {self.name}"

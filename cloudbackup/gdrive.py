@@ -1,8 +1,11 @@
 import json
 import os
 import mimetypes
+import errno
 import requests
 from cloudbackup._gdrive_authenticator import GDriveAuth
+from ._file_objects import GDriveFile
+from .exceptions import ApiResponseException
 
 
 class GDrive:
@@ -11,12 +14,11 @@ class GDrive:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {GDriveAuth.authenticate()}"
         }
-        self.all_files = self._get_files(list_all=True)
 
     def upload(self, file_abs_path=None, multipart=True):
         """
         Upload file to Google Drive storage
-        :param file_abs_path: absolute path of file
+        :param file_abs_path: absolute file path
         :param multipart: use True if you want to upload safely, else set False
         :return: upload status message
         """
@@ -24,26 +26,25 @@ class GDrive:
             upload = self._multipart_upload
         else:
             upload = self._single_upload
-        tree = os.walk(file_abs_path)
         if os.path.isfile(file_abs_path):
             upload(file_abs_path)
         elif os.path.isdir(file_abs_path):
             parents = {}
+            tree = os.walk(file_abs_path)
             for root, dirs, filenames in tree:
                 if root.endswith(os.path.sep):
                     root = root[:-1]
                 parent_id = parents[os.path.split(root)[0]] if parents else []
                 # os.path.split returns pair (head, tail) of path
-                folder_id = self._create_folder(os.path.split(root)[-1],
-                                                parent_id=parent_id)
+                folder_id = self.mkdir(os.path.split(root)[-1],
+                                       parent_id=parent_id)
                 if not filenames:
                     continue
                 for file in filenames:
                     upload(os.path.join(root, file), parent_id=folder_id)
                 parents[root] = folder_id
-            return "Upload completed"
         else:
-            return "This directory or file doesn\'t exists"
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_abs_path)
 
     def download(self, file_id, path=None):
         """
@@ -52,10 +53,7 @@ class GDrive:
         :param path: (optional) pass absolute path where you want to store downloaded file
         :return: status message
         """
-        try:
-            file_bytes, filename = self._download_file(request_file_id=file_id)
-        except FileNotFoundError:
-            return f"File: starts with `{file_id}` id not found"
+        file_bytes, filename = self._download_file(request_file_id=file_id)
         if path is None:
             dl_path = filename
             path = "present working"
@@ -65,28 +63,36 @@ class GDrive:
             f.write(file_bytes)
             return f"Successfully download file: {filename} to {path} directory"
 
-    def list_files(self, folder_id=None):
+    def lsdir(self, dir_id=None, trashed=False):
         """
-        Return dict: {'kind': '', 'id': '', 'name': '', 'mimeType': ''}
+        :param trashed: whether to list files from the trash
+        :param dir_id: id of parent directory
+        :param folder_id: directory to list
+        :return: list of GDriveFile objects
         """
-        if folder_id == "" or folder_id is None:
-            return self.all_files
-        return self._get_files(parent_id=folder_id)
+        flags = {
+            "q": f"trashed={trashed}" if not dir_id
+            else f"trashed={trashed} and '{dir_id}' in parents"
+        }
+        r = requests.get("https://www.googleapis.com/drive/v3/files",
+                         params=flags, headers=self._auth_headers)
+        GDrive._check_status(r)
+        return [GDriveFile(file) for file in r.json()["files"]]
 
-    def autocomplete_id(self, id):
+    def autocomplete_id(self, start_id):
         """
         Return id that starts with given id
-        :param id: start id
+        :param start_id: start id
         :return: completed id
         """
-        if id is None or id == "root":
-            return id
-        for file in self.all_files:
-            if file["id"].startswith(id):
-                return file["id"]
+        if start_id is None or start_id == "root":
+            return start_id
+        for file in self.lsdir():
+            if file.id.startswith(start_id):
+                return file.id
         return None
 
-    def _create_folder(self, name, parent_id=None):
+    def mkdir(self, name, parent_id=None):
         """
         Create folder in Google Drive storage
         :param name: folder name
@@ -102,21 +108,6 @@ class GDrive:
                           headers=self._auth_headers, data=json.dumps(metadata))
         return r.json()["id"]
 
-    def _get_files(self, parent_id=None, trashed=False, list_all=False):
-        """
-        Return list of files on Google Drive storage
-        :param trashed: whether to show files that are in the trash
-        :param list_all: whether to list all files and directories on storage
-        :return: JSON file that includes files info
-        """
-        flags = {
-            "q": f"trashed={trashed}" if list_all
-            else f"trashed={trashed} and '{parent_id}' in parents"
-        }
-        json_r = requests.get("https://www.googleapis.com/drive/v3/files",
-                              params=flags, headers=self._auth_headers).json()
-        return json_r["files"]
-
     def _download_file(self, request_file_id=None):
         """
         :param request_file_id: file id to download
@@ -124,14 +115,16 @@ class GDrive:
         """
         file_id = None
         filename = None
-        for file in self.all_files:
-            if file["id"] == request_file_id:
-                file_id = file["id"]
-                filename = file["name"]
+        for file in self.lsdir():
+            if file.id == request_file_id:
+                file_id = file.id
+                filename = file.name
         file_data = {"alt": "media"}
-        return (requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                             params=file_data,
-                             headers=self._auth_headers).content, filename)
+        r = requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                         params=file_data,
+                         headers=self._auth_headers)
+        GDrive._check_status(r)
+        return r.content, filename
 
     def delete(self, file_id):
         """
@@ -140,7 +133,7 @@ class GDrive:
         """
         r = requests.request("DELETE", f"https://www.googleapis.com/drive/v3/files/{file_id}",
                              headers=self._auth_headers)
-        print(r.text)
+        GDrive._check_status(r)
 
     def _empty_trash(self):
         """
@@ -148,6 +141,7 @@ class GDrive:
         """
         r = requests.request("DELETE", "https://www.googleapis.com/drive/v3/files/trash",
                              headers=self._auth_headers)
+        GDrive._check_status(r)
 
     def _send_initial_request(self, file_path, parent_id=None):
         """
@@ -166,8 +160,10 @@ class GDrive:
         if parent_id is not None:
             metadata["parents"] = [parent_id]
         metadata = json.dumps(metadata)
-        return requests.post("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
-                             headers=headers, data=metadata)
+        r = requests.post("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+                          headers=headers, data=metadata)
+        GDrive._check_status(r)
+        return r
 
     def _single_upload(self, file_path, parent_id=None):
         """
@@ -182,6 +178,7 @@ class GDrive:
             file_data = f.read()
         r = requests.put(resumable_uri, data=file_data,
                          headers=response.headers)
+        GDrive._check_status(r)
         return r.json()
 
     def _multipart_upload(self, file_path, parent_id=None):
@@ -216,3 +213,8 @@ class GDrive:
                 diff = int(r.headers["range"].split("-")[1]) + 1 - uploaded_size
                 # range header looks like "bytes=0-n", where n - received bytes
                 file.seek(diff, 1)  # second parameter means seek relative to the current position
+
+    @staticmethod
+    def _check_status(response):
+        if response.status_code in {400, 401, 403, 404, 429, 500}:
+            raise ApiResponseException(response.status_code, response.json()["error"]["message"])
