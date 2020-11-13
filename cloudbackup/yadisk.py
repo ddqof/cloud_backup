@@ -1,8 +1,9 @@
 import os
-from urllib.parse import urlencode
 import requests
 from urllib.parse import parse_qs
 from ._yadisk_authenticator import YaDiskAuth
+from .exceptions import YaDiskApiResponseException, IncorrectPathException
+from ._yandex_file_object import YaDiskFile
 
 
 class YaDisk:
@@ -11,56 +12,43 @@ class YaDisk:
             "Content-Type": "application/json",
             "Authorization": YaDiskAuth.authenticate()
         }
-        self.all_files = self._get_files()
 
-    def _get_files(self, path=None):
+    def lsdir(self, directory=None) -> list:
         """
-        Process the raw response for file meta-information
-        :param path:
-        :param trashed:
-        :param list_all:
-        :return:
+        Make request to get directory meta-information and return list of YaDiskFile objects.
+        If directory isn't specified, return all files on YandexDisk storage
+        :param directory: directory to list
+        :return: list of YaDiskFile objects in
         """
-        if path is not None:
-            r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/", params={"path": path},
-                             headers=self.auth_headers).json()
-            try:
-                files_list = r["_embedded"]["items"]
-            except KeyError:
-                files_list = r
+        if directory is None:
+            r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/files", headers=self.auth_headers)
         else:
-            r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/files", headers=self.auth_headers).json()
-            files_list = r["items"]
-        return files_list
-
-    def list_files(self, folder_id=None) -> list:
-        """
-        Return list of dicts: {'name': '', 'id': '', 'path': '', 'type': '', 'mime_type': ''}
-        'type' not equals 'mimeType', 'type' might be only 'dir' or 'file'
-        """
-        files = []
-        if folder_id == "" or folder_id is None:
-            for file_data in self._get_files():
-                file = {}
-                for key in file_data:
-                    if key == "name" or key == "path" or key == "type" or key == "mime_type":
-                        file[key] = file_data[key]
-                    elif key == "resource_id":
-                        file["id"] = file_data[key].split(":")[1]
-                        # resource id is 115807909:3c36364d42da9c... where first part is not unique
-                files.append(file)
-            return files
-        return self._get_files(path=folder_id)
+            r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/", params={"path": directory},
+                             headers=self.auth_headers)
+        if r.status_code in {400, 401, 403, 404, 406, 429, 503}:
+            raise YaDiskApiResponseException(r.status_code, r.json()["message"])
+        r = r.json()
+        if "_embedded" in r:
+            raw_files = r["_embedded"]["items"]
+        elif "items" in r:
+            raw_files = r["items"]
+        else:
+            raw_files = [r]
+        return [YaDiskFile(file) for file in raw_files]
 
     def download(self, path):
+        YaDisk._check_path(path)
         r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/download", headers=self.auth_headers,
-                         params={"path": path}).json()
+                         params={"path": path})
+        if r.status_code in {400, 401, 403, 404, 406, 429, 503}:
+            raise YaDiskApiResponseException(r.status_code, r.json()["message"])
+        r = r.json()
         parsed_url = parse_qs(r["href"])  # returns queries like 'filename': ['test.zip']
         download_request = requests.get(r["href"])
         with open(parsed_url["filename"][0], "wb+") as f:
             f.write(download_request.content)
 
-    def upload(self, file_abs_path, destination="/"):
+    def upload(self, file_abs_path, destination):
         """
         Upload file to YandexDisk storage
         :param file_abs_path: absolute path of file
@@ -69,7 +57,6 @@ class YaDisk:
         :return: upload status message
         """
         if os.path.isfile(file_abs_path):
-            destination = destination + os.path.split(file_abs_path)[1]
             self._single_upload(file_abs_path, destination)
         elif os.path.isdir(file_abs_path):
             if file_abs_path.endswith(os.path.sep):
@@ -78,7 +65,7 @@ class YaDisk:
             head = os.path.split(file_abs_path)[0]
             for root, dirs, filenames in tree:
                 destination = root.split(head)[1]
-                self._create_folder(destination)
+                self.mkdir(destination)
                 if not filenames:
                     continue
                 for file in filenames:
@@ -90,32 +77,37 @@ class YaDisk:
     def _initilal_upload(self, destination):
         """
         Send inital request to get ref for download a file
-        :param path: path to download file
-        :return: ref for downloading file
+        :param destination: directory on YandexDisk storage where to save uploaded file
+        :return: URL for the file upload
         """
-        path = {"path": destination}
-        r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/upload", params=urlencode(path),
+        r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/upload", params={"path": destination},
                          headers=self.auth_headers)
-        print(r.text)
+        if r.status_code in {400, 401, 403, 404, 406, 409, 423, 429, 503, 507}:
+            raise YaDiskApiResponseException(r.status_code, r.json()["message"])
         return r.json()["href"]
 
     def _single_upload(self, local_path, destination):
-        if destination is None:
-            destination = os.path.split(local_path)[-1]
+        YaDisk._check_path(destination)
         ref = self._initilal_upload(destination)
         with open(local_path, "rb") as f:
             file_data = f.read()
         upload_request = requests.put(ref, data=file_data)
+        if upload_request.status_code in {412, 413, 500, 507}:
+            raise YaDiskApiResponseException(upload_request.status_code, upload_request.json()["message"])
 
-    def _create_folder(self, destination):
+    def mkdir(self, destination):
         """
-        Create folder in YandexDisk storage
-        :param destination: name of folder to create
-        :return:
+        Make directory on YandexDisk storage.
+        :param destination: path to created folder. You can provide like `disk:/path` or just `path`
         """
+        YaDisk._check_path(destination)
         path = {"path": destination}
         r = requests.put("https://cloud-api.yandex.net/v1/disk/resources", params=path,
                          headers=self.auth_headers)
-        print(r.status_code)
+        if r.status_code in {400, 401, 403, 404, 406, 409, 423, 429, 503, 507}:
+            raise YaDiskApiResponseException(r.status_code, r.json()["message"])
 
-        # TODO: handle all possible errors
+    @staticmethod
+    def _check_path(path):
+        if not path.startswith("disk") and ":" in path:
+            raise IncorrectPathException(path)
