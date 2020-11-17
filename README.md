@@ -16,6 +16,9 @@ It's simple tool for backing your data up on Google Drive and Yandex.Disk cloud 
 * `./main.py -s gdrive -ls` to list all files (directories marked cyan color) on remote storage.
 * `./main.py -s gdrive -ls -id root` to list all files in `root` directory
 
+Tip: pipe output of `-ls` command to `less` unix util for page-view.
+For example: `./main.py -s gdrive -ls | less`.
+
 ### Upload
 * `./main.py -s gdrive -ul -p /home/user` to upload directory `/home/user` to root directory.
 * `./main.py -s gdrive -ul -p /home/user/test.py` to upload `test.py` file to root directory.
