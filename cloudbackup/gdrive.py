@@ -5,7 +5,7 @@ import errno
 import requests
 from ._authenticators import GDriveAuth
 from ._file_objects import GDriveFile
-from .exceptions import ApiResponseException
+from .exceptions import ApiResponseException, AutocompleteFileIdException
 
 
 class GDrive:
@@ -18,6 +18,9 @@ class GDrive:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {GDriveAuth.authenticate()}"
         }
+        self.files = []
+        for page in self.lsdir(page_size=1000):
+            self.files.extend(page)
 
     def upload(self, file_abs_path=None, multipart=False) -> None:
         """
@@ -68,39 +71,63 @@ class GDrive:
         with open(dl_path, "wb+") as f:
             f.write(file_bytes)
 
-    def lsdir(self, dir_id=None, trashed=False) -> list:
+    def lsdir(self, dir_id=None, trashed=False, page_size=100, order_by="modifiedTime") -> list:
         """
-        :param trashed: whether to list files from the trash
-        :param dir_id: id of parent directory
+        List all files in GoogleDrive storage or in a particular directory by page.
+        Method yields list for providing page-type view of files so you need to
+        iterate over it to fetch all pages and eventually all files in a directory.
+        :param order_by: Sort key. Valid keys are: 'createdTime', 'folder', 'modifiedTime', 'name',
+        'recency', 'viewedByMeTime'. Each key sorts ascending by default, but may be reversed with the 'desc' modifier.
+        :param dir_id: If None then list all files, else list files in a directory with given id
+        :param trashed: Whether to list files from the trash
+        :param page_size: Files count on one page (set value from 100 to 1000)
         :return: list of GDriveFile objects
         :raise: ApiResponseException: an error occurred accessing API
         """
         flags = {
-            "q": f"trashed={trashed}" if not dir_id
-            else f"trashed={trashed} and '{dir_id}' in parents"
+            "q": f"trashed={trashed} and 'me' in owners" if not dir_id
+            else f"trashed={trashed} and '{dir_id}' in parents and 'me' in owners",
+            "pageSize": page_size,
+            "orderBy": order_by
         }
         r = requests.get("https://www.googleapis.com/drive/v3/files",
                          params=flags, headers=self._auth_headers)
         GDrive._check_status(r)
-        return [GDriveFile(file) for file in r.json()["files"]]
+        r = r.json()
+        yield [GDriveFile(file) for file in r["files"]]
+        while True:
+            try:
+                flags = {
+                    "q": f"trashed={trashed} and 'me' in owners" if not dir_id
+                    else f"trashed={trashed} and 'me' in owners '{dir_id}' in parents",
+                    "pageToken": r["nextPageToken"],
+                    "pageSize": page_size,
+                    "orderBy": order_by
+                }
+                r = requests.get("https://www.googleapis.com/drive/v3/files",
+                                 params=flags, headers=self._auth_headers)
+                GDrive._check_status(r)
+                r = r.json()
+                yield [GDriveFile(file) for file in r["files"]]
+            except KeyError:
+                return
 
     def autocomplete_id(self, start_id) -> None or str:
         """
         Return id that starts with given id
         :param start_id: start id
         :return: completed id
-        :raise: ApiResponseException: an error occurred accessing API
         """
         if start_id is None or start_id == "root":
             return start_id
-        for file in self.lsdir():
+        for file in self.files:
             if file.id.startswith(start_id):
                 return file.id
-        return None
+        raise AutocompleteFileIdException
 
     def mkdir(self, name, parent_id=None) -> str:
         """
-        Create folder in Google Drive storage
+        Create a new directory in Google Drive storage
         :param name: folder name
         :param parent_id: ids of parents of this folder
         :return: id of created folder
@@ -118,13 +145,14 @@ class GDrive:
 
     def _download_file(self, request_file_id=None) -> tuple:
         """
+        Make request for downloading file from GoogleDrive storage
         :param request_file_id: file id to download
         :return: tuple: (raw bytes of downloaded file, filename)
         :raise: ApiResponseException: an error occurred accessing API
         """
         file_id = None
         filename = None
-        for file in self.lsdir():
+        for file in self.files:
             if file.id == request_file_id:
                 file_id = file.id
                 filename = file.name
@@ -135,16 +163,15 @@ class GDrive:
         GDrive._check_status(r)
         return r.content, filename
 
-    def delete(self, file_id, permanently=False) -> None:
+    def remove(self, file_id, permanently=False) -> None:
         """
-        Permanently deletes  a filename by id.
+        Permanently deletes a file owned by the user without moving it to the trash.
         :param file_id: id of file that should be deleted
         :param permanently: (optional) whether to delete the file permanently or move to the trash
         :raise: ApiResponseException: an error occurred accessing API
         """
         if permanently:
-            r = requests.request("DELETE", f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                                 headers=self._auth_headers)
+            r = requests.request("DELETE", f"https://www.googleapis.com/drive/v3/files/{file_id}")
         else:
             r = requests.post(f"https://www.googleapis.com/drive/v2/files/{file_id}/trash",
                               headers=self._auth_headers)
@@ -152,7 +179,7 @@ class GDrive:
 
     def _empty_trash(self) -> None:
         """
-        Empty trash without ability to restore. Be careful!
+        Permanently deletes all of the user's trashed files.
         :raise ApiResponseException: an error occurred accessing API
         """
         r = requests.request("DELETE", "https://www.googleapis.com/drive/v3/files/trash",
@@ -235,7 +262,7 @@ class GDrive:
     @staticmethod
     def _check_status(response) -> None:
         """
-        Raise ApiResponseException if API request has unsuccessful status code
+        Raise ApiResponseException if API response has unsuccessful status code
         :param response: response object from `requests` library
         """
         if response.status_code in {400, 401, 403, 404, 429, 500}:
