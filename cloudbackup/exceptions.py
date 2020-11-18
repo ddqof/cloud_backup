@@ -17,7 +17,7 @@ class IncorrectPathException(Exception):
         self.message = f"Path: {path} must not include a `:` character"
 
 
-class AutocompleteFileIdException(Exception):
+class RemoteFileNotFoundException(Exception):
     """
     Raises when there is no File Id starts with given Request Id on GoogleDrive storage
     """

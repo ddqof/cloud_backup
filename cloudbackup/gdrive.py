@@ -5,7 +5,7 @@ import errno
 import requests
 from ._authenticators import GDriveAuth
 from ._file_objects import GDriveFile
-from .exceptions import ApiResponseException, AutocompleteFileIdException
+from .exceptions import ApiResponseException, RemoteFileNotFoundException
 
 
 class GDrive:
@@ -18,11 +18,9 @@ class GDrive:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {GDriveAuth.authenticate()}"
         }
-        self.files = []
-        for page in self.lsdir(page_size=1000):
-            self.files.extend(page)
+        self.files = self.lsdir(page_size=1000)
 
-    def upload(self, file_abs_path=None, multipart=False) -> None:
+    def upload(self, file_abs_path, multipart=False) -> None:
         """
         Upload file to Google Drive storage
         :param file_abs_path: absolute file path
@@ -56,26 +54,43 @@ class GDrive:
         else:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_abs_path)
 
-    def download(self, file_id, path=None) -> None:
+    def download(self, file, path=None) -> None:
         """
         Download file from Google Drive storage and write its data to file
-        :param file_id: name of file to download
+        :param file: GDriveFileObject to download
         :param path: (optional) pass absolute path where to store downloaded file
         :raise: ApiResponseException: an error occurred accessing API
         """
-        file_bytes, filename = self._download_file(request_file_id=file_id)
-        if path is None:
-            dl_path = filename
-        else:
-            dl_path = os.path.join(path, filename)
-        with open(dl_path, "wb+") as f:
-            f.write(file_bytes)
+        file_id = file.id
+        for file in self.lsdir(file_id):
+            if file.mime_type == "application/vnd.google-apps.folder":
+                os.mkdir(os.path.join(path, file.name))
+            else:
+                file_bytes = self._download_file(file.id)
+                if path is None:
+                    dl_path = file.name
+                else:
+                    dl_path = os.path.join(path, file.name)
+                with open(dl_path, "wb+") as f:
+                    f.write(file_bytes)
+
+    def _download_file(self, file_id) -> bytes:
+        """
+        Make request for downloading file from GoogleDrive storage
+        :param file_id: file id to download
+        :return: tuple: (raw bytes of downloaded file, filename)
+        :raise: ApiResponseException: an error occurred accessing API
+        """
+        file_data = {"alt": "media"}
+        r = requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                         params=file_data,
+                         headers=self._auth_headers)
+        GDrive._check_status(r)
+        return r.content
 
     def lsdir(self, dir_id=None, trashed=False, page_size=100, order_by="modifiedTime") -> list:
         """
-        List all files in GoogleDrive storage or in a particular directory by page.
-        Method yields list for providing page-type view of files so you need to
-        iterate over it to fetch all pages and eventually all files in a directory.
+        List all files in GoogleDrive storage or in a particular directory.
         :param order_by: Sort key. Valid keys are: 'createdTime', 'folder', 'modifiedTime', 'name',
         'recency', 'viewedByMeTime'. Each key sorts ascending by default, but may be reversed with the 'desc' modifier.
         :param dir_id: If None then list all files, else list files in a directory with given id
@@ -84,17 +99,19 @@ class GDrive:
         :return: list of GDriveFile objects
         :raise: ApiResponseException: an error occurred accessing API
         """
+        files = []
         flags = {
             "q": f"trashed={trashed} and 'me' in owners" if not dir_id
             else f"trashed={trashed} and '{dir_id}' in parents and 'me' in owners",
             "pageSize": page_size,
-            "orderBy": order_by
+            "orderBy": order_by,
+            "fields": "files(name, mimeType, parents, id)",
         }
         r = requests.get("https://www.googleapis.com/drive/v3/files",
                          params=flags, headers=self._auth_headers)
         GDrive._check_status(r)
         r = r.json()
-        yield [GDriveFile(file) for file in r["files"]]
+        files.extend([GDriveFile(file) for file in r["files"]])
         while True:
             try:
                 flags = {
@@ -102,17 +119,18 @@ class GDrive:
                     else f"trashed={trashed} and 'me' in owners '{dir_id}' in parents",
                     "pageToken": r["nextPageToken"],
                     "pageSize": page_size,
-                    "orderBy": order_by
+                    "orderBy": order_by,
+                    "fields": "files(name, mimeType, parents, id)",
                 }
                 r = requests.get("https://www.googleapis.com/drive/v3/files",
                                  params=flags, headers=self._auth_headers)
                 GDrive._check_status(r)
                 r = r.json()
-                yield [GDriveFile(file) for file in r["files"]]
+                files.extend([GDriveFile(file) for file in r["files"]])
             except KeyError:
-                return
+                return files
 
-    def autocomplete_id(self, start_id) -> None or str:
+    def get_file_object_by_id(self, start_id) -> None or str:
         """
         Return id that starts with given id
         :param start_id: start id
@@ -122,8 +140,8 @@ class GDrive:
             return start_id
         for file in self.files:
             if file.id.startswith(start_id):
-                return file.id
-        raise AutocompleteFileIdException
+                return file
+        raise RemoteFileNotFoundException
 
     def mkdir(self, name, parent_id=None) -> str:
         """
@@ -142,26 +160,6 @@ class GDrive:
                           headers=self._auth_headers, data=json.dumps(metadata))
         GDrive._check_status(r)
         return r.json()["id"]
-
-    def _download_file(self, request_file_id=None) -> tuple:
-        """
-        Make request for downloading file from GoogleDrive storage
-        :param request_file_id: file id to download
-        :return: tuple: (raw bytes of downloaded file, filename)
-        :raise: ApiResponseException: an error occurred accessing API
-        """
-        file_id = None
-        filename = None
-        for file in self.files:
-            if file.id == request_file_id:
-                file_id = file.id
-                filename = file.name
-        file_data = {"alt": "media"}
-        r = requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                         params=file_data,
-                         headers=self._auth_headers)
-        GDrive._check_status(r)
-        return r.content, filename
 
     def remove(self, file_id, permanently=False) -> None:
         """

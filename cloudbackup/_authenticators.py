@@ -22,7 +22,15 @@ class GDriveAuth:
             return token
         with open(GOOGLE_CREDENTIALS_PATH) as f:
             credentials = json.load(f)
-            code, client = GDriveAuth._get_access_code_and_client(credentials)
+            keys = {"client_id": credentials["installed"]["client_id"],
+                    "redirect_uri": f"{REDIRECT_HOST}:{str(REDIRECT_PORT)}",
+                    "response_type": "code",
+                    "scope": GDRIVE_SCOPE,
+                    "access_type": "offline",
+                    }
+            login_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(keys)
+            client, response = LocalServer.handle(login_url)
+            code = re.search(r"code=(\S+)[\s&]", response).group(1)
         exchange_keys = {
             "client_id": credentials["installed"]["client_id"],
             "client_secret": credentials["installed"]["client_secret"],
@@ -43,22 +51,6 @@ class GDriveAuth:
             message = f"HTTP/1.1 200 OK\r\n\r\n{f.read()}"
         client.send(message.encode())
         return token_data["token"]
-
-    @staticmethod
-    def _get_access_code_and_client(credentials):
-        """
-        :param credentials: credentials to access Google Drive api
-        :return: client socket and access code to Google Drive api
-        """
-        keys = {"client_id": credentials["installed"]["client_id"],
-                "redirect_uri": f"{REDIRECT_HOST}:{str(REDIRECT_PORT)}",
-                "response_type": "code",
-                "scope": GDRIVE_SCOPE,
-                "access_type": "offline",
-                }
-        login_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(keys)
-        client, response = LocalServer.handle(login_url)
-        return re.search(r"code=(\S+)[\s&]", response).group(1), client
 
 
 class YaDiskAuth:
@@ -105,4 +97,3 @@ class YaDiskAuth:
             status = error_msg
         client.send(message.encode())
         return status
-

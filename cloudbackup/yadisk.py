@@ -1,12 +1,16 @@
 import os
 import requests
 from urllib.parse import parse_qs
-from ._yadisk_authenticator import YaDiskAuth
+from ._authenticators import YaDiskAuth
 from .exceptions import ApiResponseException, IncorrectPathException
 from ._file_objects import YaDiskFile
 
 
 class YaDisk:
+    """
+    Implements access to GoogleDrive API
+    """
+
     def __init__(self):
         self.auth_headers = {
             "Content-Type": "application/json",
@@ -25,7 +29,7 @@ class YaDisk:
         else:
             r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/", params={"path": directory},
                              headers=self.auth_headers)
-        if r.status_code in {400, 401, 403, 404, 406, 429, 503}:
+        if r.status_code != 200:
             raise ApiResponseException(r.status_code, r.json()["message"])
         r = r.json()
         if "_embedded" in r:
@@ -40,7 +44,7 @@ class YaDisk:
         YaDisk._check_path(path)
         r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/download", headers=self.auth_headers,
                          params={"path": path})
-        if r.status_code in {400, 401, 403, 404, 406, 429, 503}:
+        if r.status_code != 200:
             raise ApiResponseException(r.status_code, r.json()["message"])
         r = r.json()
         parsed_url = parse_qs(r["href"])  # returns queries like 'filename': ['test.zip']
@@ -82,17 +86,17 @@ class YaDisk:
         """
         r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/upload", params={"path": destination},
                          headers=self.auth_headers)
-        if r.status_code in {400, 401, 403, 404, 406, 409, 423, 429, 503, 507}:
+        if r.status_code != 200:
             raise ApiResponseException(r.status_code, r.json()["message"])
         return r.json()["href"]
 
     def _single_upload(self, local_path, destination):
         YaDisk._check_path(destination)
-        ref = self._initilal_upload(destination)
+        upload_ref = self._initilal_upload(destination)
         with open(local_path, "rb") as f:
             file_data = f.read()
-        upload_request = requests.put(ref, data=file_data)
-        if upload_request.status_code in {412, 413, 500, 507}:
+        upload_request = requests.put(upload_ref, data=file_data)
+        if upload_request.status_code != 201:
             raise ApiResponseException(upload_request.status_code, upload_request.json()["message"])
 
     def mkdir(self, destination):
@@ -104,7 +108,7 @@ class YaDisk:
         path = {"path": destination}
         r = requests.put("https://cloud-api.yandex.net/v1/disk/resources", params=path,
                          headers=self.auth_headers)
-        if r.status_code in {400, 401, 403, 404, 406, 409, 423, 429, 503, 507}:
+        if r.status_code != 201:
             raise ApiResponseException(r.status_code, r.json()["message"])
 
     @staticmethod
