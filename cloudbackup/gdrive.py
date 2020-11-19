@@ -10,7 +10,7 @@ from .exceptions import ApiResponseException, RemoteFileNotFoundException
 
 class GDrive:
     """
-    Implements access to GoogleDrive API
+    Implements access to GoogleDrive API.
     """
 
     def __init__(self):
@@ -18,17 +18,19 @@ class GDrive:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {GDriveAuth.authenticate()}"
         }
-        self.files = self.lsdir(page_size=1000)
+        self.files = self.lsdir(page_size=1000, order_by="folder")
 
     def upload(self, file_abs_path, multipart=False) -> None:
         """
         Upload file to Google Drive storage
-        :param file_abs_path: absolute file path
-        :param multipart: use True if you want to upload safely, else set False
-        :return: upload status message
-        :raises:
-                FileNotFoundError: an error occurred accessing file using :param: file_abs_path
-                ApiResponseException: an error occurred accessing API
+
+        Args:
+            file_abs_path: absolute file path.
+            multipart: use True if you want to upload safely, else set False.
+
+        Raises:
+            FileNotFoundError: an error occurred accessing file using `file_abs_path`.
+            ApiResponseException: an error occurred accessing API.
         """
         if multipart:
             upload = self._multipart_upload
@@ -56,10 +58,14 @@ class GDrive:
 
     def download(self, file, path=None) -> None:
         """
-        Download file from Google Drive storage and write its data to file
-        :param file: GDriveFileObject to download
-        :param path: (optional) pass absolute path where to store downloaded file
-        :raise: ApiResponseException: an error occurred accessing API
+        Download file from Google Drive storage and write its data to file.
+
+        Args:
+            file: GDriveFileObject to download.
+            path: Optional; pass absolute path where to store downloaded file.
+
+        Raises:
+            ApiResponseException: an error occurred accessing API.
         """
         file_id = file.id
         for file in self.lsdir(file_id):
@@ -77,9 +83,15 @@ class GDrive:
     def _download_file(self, file_id) -> bytes:
         """
         Make request for downloading file from GoogleDrive storage
-        :param file_id: file id to download
-        :return: tuple: (raw bytes of downloaded file, filename)
-        :raise: ApiResponseException: an error occurred accessing API
+
+        Args:
+            file_id: file id to download
+
+        Returns:
+            tuple: (raw bytes of downloaded file, filename)
+
+        Raises:
+            ApiResponseException: an error occurred accessing API
         """
         file_data = {"alt": "media"}
         r = requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
@@ -91,13 +103,20 @@ class GDrive:
     def lsdir(self, dir_id=None, trashed=False, page_size=100, order_by="modifiedTime") -> list:
         """
         List all files in GoogleDrive storage or in a particular directory.
-        :param order_by: Sort key. Valid keys are: 'createdTime', 'folder', 'modifiedTime', 'name',
-        'recency', 'viewedByMeTime'. Each key sorts ascending by default, but may be reversed with the 'desc' modifier.
-        :param dir_id: If None then list all files, else list files in a directory with given id
-        :param trashed: Whether to list files from the trash
-        :param page_size: Files count on one page (set value from 100 to 1000)
-        :return: list of GDriveFile objects
-        :raise: ApiResponseException: an error occurred accessing API
+        
+        Args:
+            order_by: Sort key. Valid keys are: 'createdTime', 'folder' (folders will show first in the list),
+              'modifiedTime', 'name', 'recency', 'viewedByMeTime'. Each key sorts ascending by default,
+               but may be reversed with the 'desc' modifier.
+            dir_id: If None then list all files, else list files in a directory with given id
+            trashed: Whether to list files from the trash
+            page_size: Files count on one page (set value from 100 to 1000)
+        
+        Returns:
+            List of GDriveFile objects
+
+        Raises:
+            ApiResponseException: an error occurred accessing API
         """
         files = []
         flags = {
@@ -132,9 +151,13 @@ class GDrive:
 
     def get_file_object_by_id(self, start_id) -> None or str:
         """
-        Return id that starts with given id
-        :param start_id: start id
-        :return: completed id
+        This method used for user-friendly CLI interface that allows
+        type only start of full file id.
+
+        Args:
+            start_id: start of id
+        Returns:
+             GDriveFileObject that has id starts with given start_id
         """
         if start_id is None or start_id == "root":
             return start_id
@@ -146,10 +169,16 @@ class GDrive:
     def mkdir(self, name, parent_id=None) -> str:
         """
         Create a new directory in Google Drive storage
-        :param name: folder name
-        :param parent_id: ids of parents of this folder
-        :return: id of created folder
-        :raise: ApiResponseException: an error occurred accessing API
+
+        Params:
+            name: directory name
+            parent_id: parent id of this folder
+
+        Returns:
+            id of created folder
+
+        Raises:
+             ApiResponseException: an error occurred accessing API
         """
         metadata = {
             "name": name,
@@ -163,10 +192,14 @@ class GDrive:
 
     def remove(self, file_id, permanently=False) -> None:
         """
-        Permanently deletes a file owned by the user without moving it to the trash.
-        :param file_id: id of file that should be deleted
-        :param permanently: (optional) whether to delete the file permanently or move to the trash
-        :raise: ApiResponseException: an error occurred accessing API
+        Method allows to remove permanently or move file to trash.
+
+        Args:
+            file_id: id of file that should be deleted.
+            permanently: Optional; whether to delete the file permanently or move to the trash.
+
+        Raises:
+            ApiResponseException: an error occurred accessing API.
         """
         if permanently:
             r = requests.request("DELETE", f"https://www.googleapis.com/drive/v3/files/{file_id}")
@@ -177,8 +210,10 @@ class GDrive:
 
     def _empty_trash(self) -> None:
         """
-        Permanently deletes all of the user's trashed files.
-        :raise ApiResponseException: an error occurred accessing API
+        Permanently deletes all files in the trash.
+
+        Raises:
+            ApiResponseException: an error occurred accessing API.
         """
         r = requests.request("DELETE", "https://www.googleapis.com/drive/v3/files/trash",
                              headers=self._auth_headers)
@@ -187,10 +222,17 @@ class GDrive:
     def _send_initial_request(self, file_path, parent_id=None) -> requests.models.Response:
         """
         Send initial request to prepare API to receive further requests to upload
-        :param file_path: absolute path to file for upload
-        :param parent_id: (optional) id of parent folder passed in `file_path`
-        :raise ApiResponseException: an error occurred accessing API
-        :return: response from API
+
+        Args:
+            file_path: absolute path to file for upload
+            parent_id: (optional) id of parent folder passed in `file_path`
+
+        Returns:
+            A response object from `requests` library that has 'Location' header
+            that specifies the resumable session URI for upload file.
+
+        Raises:
+             ApiResponseException: an error occurred accessing API
         """
         filename = os.path.basename(file_path)
         headers = {
@@ -210,10 +252,19 @@ class GDrive:
     def _single_upload(self, file_path, parent_id=None) -> dict:
         """
         Perform file upload by one single request. Faster than multipart upload.
-        :param file_path: absolute path to file for upload
-        :param parent_id: (optional) id of parent folder passed in `file_path`
-        :raise ApiResponseException: an error occurred accessing API
-        :return response from API
+
+        Args:
+            file_path: absolute path to file for upload
+            parent_id: (optional) id of parent folder passed in `file_path`
+
+        Returns:
+            A dict-like response from GoogleDrive API. For example:
+
+            {'kind': 'drive#file', 'id': '1cqoEi5O1_UhplHXeTJXXXXXXXXa6rFfq',
+             'name': 'test.txt', 'mimeType': 'text/plain'}
+
+        Raises:
+            ApiResponseException: an error occurred accessing API
         """
         response = self._send_initial_request(file_path, parent_id)
         resumable_uri = response.headers["location"]
@@ -228,8 +279,10 @@ class GDrive:
         """
         Perform file upload by few little requests. Slower than single upload,
         but suitable if you want to make progress bar for upload status.
-        :param file_path: absolute path to file for upload
-        :param parent_id: (optional) id of parent folder passed in `file_path`
+
+        Params:
+            file_path: absolute path to file for upload
+            parent_id: Optional; id of parent folder passed in `file_path`
         """
         file_size = os.path.getsize(file_path)
         response = self._send_initial_request(file_path, parent_id)
@@ -258,10 +311,15 @@ class GDrive:
                 file.seek(diff, 1)  # second parameter means seek relative to the current position
 
     @staticmethod
-    def _check_status(response) -> None:
+    def _check_status(api_response) -> None:
         """
-        Raise ApiResponseException if API response has unsuccessful status code
-        :param response: response object from `requests` library
+        This method used for checking the response status code after every API query.
+
+        Params:
+            api_response: response object from `requests` library.
+
+        Raises:
+            ApiResponseException: if API response has unsuccessful status code.
         """
-        if response.status_code in {400, 401, 403, 404, 429, 500}:
-            raise ApiResponseException(response.status_code, response.json()["error"]["message"])
+        if api_response.status_code in {400, 401, 403, 404, 429, 500}:
+            raise ApiResponseException(api_response.status_code, api_response.json()["error"]["message"])

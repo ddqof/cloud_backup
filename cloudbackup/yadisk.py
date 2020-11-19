@@ -19,10 +19,18 @@ class YaDisk:
 
     def lsdir(self, directory=None) -> list:
         """
-        Make request to get directory meta-information and return list of YaDiskFile objects.
-        If directory isn't specified, return all files on YandexDisk storage
-        :param directory: directory to list
-        :return: list of YaDiskFile objects in
+        Make request to get directory meta-information.
+
+        Args:
+            directory: Directory to list. For example: "disk:/foo/photo2.png"
+
+        Returns:
+            If directory isn't specified, return list of all files on YandexDisk storage (excluding directories
+            due to YandexDisk API specific). If specified, returns list of all files and directories in this
+            directory.
+
+        Raises:
+            ApiResponseException: an error occurred accessing API.
         """
         if directory is None:
             r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/files", headers=self.auth_headers)
@@ -40,7 +48,17 @@ class YaDisk:
             raw_files = [r]
         return [YaDiskFile(file) for file in raw_files]
 
-    def download(self, path):
+    def download(self, path) -> None:
+        """
+        Make a request for downloading file from YaDisk storage and
+        then writing file's data to file.
+
+        Args:
+            path: File path which need to download.
+
+        Raises:
+            ApiResponseException: an error occurred accessing API.
+        """
         YaDisk._check_path(path)
         r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/download", headers=self.auth_headers,
                          params={"path": path})
@@ -52,13 +70,13 @@ class YaDisk:
         with open(parsed_url["filename"][0], "wb+") as f:
             f.write(download_request.content)
 
-    def upload(self, file_abs_path, destination):
+    def upload(self, file_abs_path, destination) -> None:
         """
         Upload file to YandexDisk storage
-        :param file_abs_path: absolute path of file
-        :param destination: where to store uploaded file on YandexDisk
-        :param multipart: use True if you want to upload safely, else set False
-        :return: upload status message
+
+        Args:
+            file_abs_path: absolute path of file.
+            destination: where to store uploaded file on YandexDisk.
         """
         if os.path.isfile(file_abs_path):
             self._single_upload(file_abs_path, destination)
@@ -74,15 +92,19 @@ class YaDisk:
                     continue
                 for file in filenames:
                     self._single_upload(os.path.join(root, file), f"{destination}/{file}")
-            return "Upload completed"
-        else:
-            return "This directory or file doesn\'t exists"
 
-    def _initilal_upload(self, destination):
+    def _initilal_upload(self, destination) -> str:
         """
         Send inital request to get ref for download a file
-        :param destination: directory on YandexDisk storage where to save uploaded file
-        :return: URL for the file upload
+
+        Args:
+            destination: directory on YandexDisk storage where to save uploaded file
+
+        Returns:
+            URL for the file upload
+
+        Raises:
+            ApiResponseException: an error occurred accessing API.
         """
         r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/upload", params={"path": destination},
                          headers=self.auth_headers)
@@ -101,8 +123,10 @@ class YaDisk:
 
     def mkdir(self, destination):
         """
-        Make directory on YandexDisk storage.
-        :param destination: path to created folder. You can provide like `disk:/path` or just `path`
+        Create a request for making directory on YandexDisk storage.
+
+        Args:
+            destination: Path to created folder. Examples: 'disk:/path/foo.py', '/path/bar'.
         """
         YaDisk._check_path(destination)
         path = {"path": destination}
@@ -113,5 +137,15 @@ class YaDisk:
 
     @staticmethod
     def _check_path(path):
+        """
+        This method used for checking the path that will be specified in API
+        request and raise exceptions if it's wrong.
+
+        Params:
+            path: path to a file on YaDisk storage
+
+        Raises:
+            IncorrectPathException: if path has prohibited chars.
+        """
         if not path.startswith("disk") and ":" in path:
             raise IncorrectPathException(path)

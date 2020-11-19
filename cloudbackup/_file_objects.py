@@ -6,7 +6,9 @@ class YaDiskFile:
     def __init__(self, meta_inf):
         """
         Create file object from JSON response
-        :param meta_inf: JSON contains raw file meta-information from YandexDisk API
+
+        Params:
+            meta_inf: JSON contains raw file meta-information from YandexDisk API response
         """
         self.name = meta_inf["name"]
         self.created = meta_inf["created"]
@@ -39,7 +41,9 @@ class GDriveFile:
     def __init__(self, meta_inf):
         """
         Create file object from JSON response
-        :param meta_inf: JSON contains raw file meta-information from GoogleDrive API
+
+        Args:
+            meta_inf: JSON contains raw file meta-information from GoogleDrive API response
         """
         self.id = meta_inf["id"]
         self.name = meta_inf["name"]
