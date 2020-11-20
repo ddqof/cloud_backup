@@ -30,7 +30,7 @@ class YaDiskFile:
             pass
 
     def __str__(self):
-        return f"YaDiskFileObject: {self.name}"
+        return f"YaDiskFileObject: {self.path}"
 
 
 class GDriveFile:

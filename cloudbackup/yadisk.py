@@ -2,7 +2,7 @@ import os
 import requests
 from urllib.parse import parse_qs
 from ._authenticators import YaDiskAuth
-from .exceptions import ApiResponseException, IncorrectPathException
+from ._exceptions import ApiResponseException, IncorrectPathException
 from ._file_objects import YaDiskFile
 
 
@@ -17,36 +17,73 @@ class YaDisk:
             "Authorization": YaDiskAuth.authenticate()
         }
 
-    def lsdir(self, directory=None) -> list:
+    def lsdir(self, directory, sort="modified", limit=20) -> list:
         """
-        Make request to get directory meta-information.
+        Make request to get directory meta-information list of limited size consists of
+        inner files and directories.
 
         Args:
             directory: Directory to list. For example: "disk:/foo/photo2.png"
+            sort: Sort key. Valid keys are: 'name', 'path', 'created', 'modified', 'size'.
+              To sort in reversed order add a hyphen to the parameter value: '-name'.
+            limit: The number of resources in the folder that should be described in the list.
 
         Returns:
-            If directory isn't specified, return list of all files on YandexDisk storage (excluding directories
-            due to YandexDisk API specific). If specified, returns list of all files and directories in this
-            directory.
+            Yields list of 'limit' size consists of YaDiskFile objects represent each file and directory.
 
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        if directory is None:
-            r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/files", headers=self.auth_headers)
-        else:
-            r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/", params={"path": directory},
+        keys = {
+            "path": directory,
+            "sort": sort,
+            "limit": limit,
+            "offest": 0,
+        }
+        r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/", params=keys,
+                         headers=self.auth_headers)
+        YaDisk._check_status(r)
+        yield [YaDiskFile(file) for file in r.json()["_embedded"]["items"]]
+        while True:
+            keys["offset"] += limit
+            r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/", params=keys,
                              headers=self.auth_headers)
-        if r.status_code != 200:
-            raise ApiResponseException(r.status_code, r.json()["message"])
-        r = r.json()
-        if "_embedded" in r:
-            raw_files = r["_embedded"]["items"]
-        elif "items" in r:
-            raw_files = r["items"]
-        else:
-            raw_files = [r]
-        return [YaDiskFile(file) for file in raw_files]
+            YaDisk._check_status(r)
+            if not r.json()["_embedded"]["items"]:
+                return
+            else:
+                yield [YaDiskFile(file) for file in r.json()["_embedded"]["items"]]
+
+    def list_files(self, sort="name", limit=20) -> list:
+        """
+        Make request to get list of limited size consists of files on YandexDisk excluding directories.
+
+        Args:
+            sort: Sort key. Valid keys are: 'name', 'path', 'created', 'modified', 'size'.
+              To sort in reversed order add a hyphen to the parameter value: '-name'.
+            limit: The number of resources in the folder that should be described in the list.
+
+        Returns:
+            Yields list of 'limit' size consists of YaDiskFileObjects represent each file and directory.
+        """
+        keys = {
+            "sort": sort,
+            "limit": limit,
+            "offset": 0,
+        }
+        r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/files", params=keys,
+                         headers=self.auth_headers)
+        YaDisk._check_status(r)
+        yield [YaDiskFile(file) for file in r.json()["items"]]
+        while True:
+            keys["offset"] += limit
+            r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/files", params=keys,
+                             headers=self.auth_headers)
+            YaDisk._check_status(r)
+            if not r.json()["items"]:
+                return
+            else:
+                yield [YaDiskFile(file) for file in r.json()["items"]]
 
     def download(self, path) -> None:
         """
@@ -62,11 +99,11 @@ class YaDisk:
         YaDisk._check_path(path)
         r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/download", headers=self.auth_headers,
                          params={"path": path})
-        if r.status_code != 200:
-            raise ApiResponseException(r.status_code, r.json()["message"])
+        YaDisk._check_status(r)
         r = r.json()
         parsed_url = parse_qs(r["href"])  # returns queries like 'filename': ['test.zip']
         download_request = requests.get(r["href"])
+        YaDisk._check_status(download_request)
         with open(parsed_url["filename"][0], "wb+") as f:
             f.write(download_request.content)
 
@@ -77,6 +114,9 @@ class YaDisk:
         Args:
             file_abs_path: absolute path of file.
             destination: where to store uploaded file on YandexDisk.
+
+        Raises:
+            ApiResponseException: an error occurred accessing API.
         """
         if os.path.isfile(file_abs_path):
             self._single_upload(file_abs_path, destination)
@@ -108,20 +148,18 @@ class YaDisk:
         """
         r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/upload", params={"path": destination},
                          headers=self.auth_headers)
-        if r.status_code != 200:
-            raise ApiResponseException(r.status_code, r.json()["message"])
+        YaDisk._check_status(r)
         return r.json()["href"]
 
-    def _single_upload(self, local_path, destination):
+    def _single_upload(self, local_path, destination) -> None:
         YaDisk._check_path(destination)
         upload_ref = self._initilal_upload(destination)
         with open(local_path, "rb") as f:
             file_data = f.read()
         upload_request = requests.put(upload_ref, data=file_data)
-        if upload_request.status_code != 201:
-            raise ApiResponseException(upload_request.status_code, upload_request.json()["message"])
+        YaDisk._check_status(upload_request)
 
-    def mkdir(self, destination):
+    def mkdir(self, destination) -> None:
         """
         Create a request for making directory on YandexDisk storage.
 
@@ -132,11 +170,10 @@ class YaDisk:
         path = {"path": destination}
         r = requests.put("https://cloud-api.yandex.net/v1/disk/resources", params=path,
                          headers=self.auth_headers)
-        if r.status_code != 201:
-            raise ApiResponseException(r.status_code, r.json()["message"])
+        YaDisk._check_status(r)
 
     @staticmethod
-    def _check_path(path):
+    def _check_path(path) -> None:
         """
         This method used for checking the path that will be specified in API
         request and raise exceptions if it's wrong.
@@ -149,3 +186,17 @@ class YaDisk:
         """
         if not path.startswith("disk") and ":" in path:
             raise IncorrectPathException(path)
+
+    @staticmethod
+    def _check_status(api_response) -> None:
+        """
+        This method used for checking the response status code after every API query.
+
+        Params:
+            api_response: response object from `requests` library.
+
+        Raises:
+            ApiResponseException: if API response has unsuccessful status code.
+        """
+        if api_response.status_code not in {200, 201}:
+            raise ApiResponseException(api_response.status_code, api_response.json()["description"])

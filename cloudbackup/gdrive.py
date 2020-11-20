@@ -5,7 +5,7 @@ import errno
 import requests
 from ._authenticators import GDriveAuth
 from ._file_objects import GDriveFile
-from .exceptions import ApiResponseException, RemoteFileNotFoundException
+from ._exceptions import ApiResponseException, RemoteFileNotFoundException
 
 
 class GDrive:
@@ -18,7 +18,9 @@ class GDrive:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {GDriveAuth.authenticate()}"
         }
-        self.files = self.lsdir(page_size=1000, order_by="folder")
+        self.files = []
+        for page in self.lsdir(page_size=1000):
+            self.files.extend(page)
 
     def upload(self, file_abs_path, multipart=False) -> None:
         """
@@ -100,37 +102,39 @@ class GDrive:
         GDrive._check_status(r)
         return r.content
 
-    def lsdir(self, dir_id=None, trashed=False, page_size=100, order_by="modifiedTime") -> list:
+    def lsdir(self, dir_id=None, trashed=False, page_size=20, order_by="modifiedTime") -> list:
         """
-        List all files in GoogleDrive storage or in a particular directory.
-        
+        Make request to get list of `page_size` size consists of files and directories in
+        directory with specified dir_id.
+        Make request to get directory meta-information list of limited size consists of
+        inner files and directories.
+
         Args:
             order_by: Sort key. Valid keys are: 'createdTime', 'folder' (folders will show first in the list),
               'modifiedTime', 'name', 'recency', 'viewedByMeTime'. Each key sorts ascending by default,
                but may be reversed with the 'desc' modifier.
             dir_id: If None then list all files, else list files in a directory with given id
             trashed: Whether to list files from the trash
-            page_size: Files count on one page (set value from 100 to 1000)
+            page_size: Files count on one page (set value from 1 to 1000)
         
         Returns:
-            List of GDriveFile objects
+            Yield list of `page_size` consists of GDriveFile objects
 
         Raises:
             ApiResponseException: an error occurred accessing API
         """
-        files = []
         flags = {
             "q": f"trashed={trashed} and 'me' in owners" if not dir_id
             else f"trashed={trashed} and '{dir_id}' in parents and 'me' in owners",
             "pageSize": page_size,
             "orderBy": order_by,
-            "fields": "files(name, mimeType, parents, id)",
+            "fields": "files(name, mimeType, parents, id), nextPageToken",
         }
         r = requests.get("https://www.googleapis.com/drive/v3/files",
                          params=flags, headers=self._auth_headers)
         GDrive._check_status(r)
         r = r.json()
-        files.extend([GDriveFile(file) for file in r["files"]])
+        yield [GDriveFile(file) for file in r["files"]]
         while True:
             try:
                 flags = {
@@ -139,15 +143,15 @@ class GDrive:
                     "pageToken": r["nextPageToken"],
                     "pageSize": page_size,
                     "orderBy": order_by,
-                    "fields": "files(name, mimeType, parents, id)",
+                    "fields": "files(name, mimeType, parents, id), nextPageToken",
                 }
                 r = requests.get("https://www.googleapis.com/drive/v3/files",
                                  params=flags, headers=self._auth_headers)
                 GDrive._check_status(r)
                 r = r.json()
-                files.extend([GDriveFile(file) for file in r["files"]])
+                yield [GDriveFile(file) for file in r["files"]]
             except KeyError:
-                return files
+                return
 
     def get_file_object_by_id(self, start_id) -> None or str:
         """
@@ -159,12 +163,14 @@ class GDrive:
         Returns:
              GDriveFileObject that has id starts with given start_id
         """
-        if start_id is None or start_id == "root":
+        if start_id == "root":
             return start_id
         for file in self.files:
-            if file.id.startswith(start_id):
-                return file
-        raise RemoteFileNotFoundException
+            try:
+                if file.id.startswith(start_id):
+                    return file
+            except TypeError:
+                raise RemoteFileNotFoundException(start_id)
 
     def mkdir(self, name, parent_id=None) -> str:
         """

@@ -5,8 +5,8 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        usage=" ./main.py [-s storage_name] STORAGE_NAME [-dl download_file] [-ls list_files]\n\t"
-              " [-o order_by] [-rm remove_file] [-p remove_permanently_flag]\n\t"
+        usage=" ./main.py [-s storage_name] STORAGE_NAME [-ls list_files]  [-o order_by]\n\t"
+              " [-dl download_file] [-rm remove_file] [-p remove_permanently_flag]\n\t"
               " [-ul upload_file] [-id file_id] ID [-d directory] PATH",
         prog="main.py",
         description="""Tool for operate with your files on Google Drive or YandexDisk storage""",
@@ -20,27 +20,34 @@ def parse_args():
                         type=str)
     parser.add_argument("-ls", "--list",
                         action="store_true",
-                        help="list files"
+                        help="List files"
                              " (if path not specified list all files)")
     parser.add_argument("-dl", "--download",
                         action="store_true",
                         help="download file")
     parser.add_argument("-d", "--directory",
                         metavar="",
-                        help="specify directory and pass it with -dl argument "
+                        help="Specify directory and pass it with -dl argument "
                              "to download file to specific directory")
-    parser.add_argument("-rm", '--remove',
+    parser.add_argument("-rm", "--remove",
                         action="store_true",
-                        help="remove file")
+                        help="Remove file")
     parser.add_argument("-p", "--permanently",
                         action="store_true",
-                        help="delete file permanently")
+                        help="Delete file permanently")
     parser.add_argument("-ul", "--upload",
                         action="store_true",
-                        help="upload file")
+                        help="Upload file")
     parser.add_argument("-id",
                         metavar="",
-                        help="id of file in Google Drive storage")
-    # TODO: add list orderBy argument
+                        help="Id of file in Google Drive storage or file path in YandexDisk")
+    parser.add_argument("-o", "--order_by",
+                        metavar="",
+                        default="modified",
+                        help="Sort key for file listing. Available keys are: "
+                             "'name', 'created', 'modified', 'size'."
+                             " Also 'folder' (will show folders first) for GDrive only and 'path'"
+                             " (will sort by path) for YaDisk only. To sort in "
+                             "reversed order add prefix 'rev'. For example: 'rev_name'.")
 
     return parser.parse_args()

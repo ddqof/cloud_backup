@@ -1,6 +1,6 @@
 import socket
 import webbrowser
-from .defaults import REDIRECT_PORT
+from ._defaults import REDIRECT_PORT
 
 
 class LocalServer:

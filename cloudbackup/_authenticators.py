@@ -4,9 +4,9 @@ import pickle
 import re
 import requests
 from urllib.parse import urlencode
-from .defaults import (GOOGLE_CREDENTIALS_PATH, GOOGLE_TOKEN_PATH,
-                       SUCCESS_MESSAGE_PATH, REDIRECT_HOST, REDIRECT_PORT, GDRIVE_SCOPE, YANDEX_CREDENTIALS_PATH,
-                       YANDEX_TOKEN_PATH, FAILURE_MESSAGE_PATH)
+from ._defaults import (GOOGLE_CREDENTIALS_PATH, GOOGLE_TOKEN_PATH,
+                        SUCCESS_MESSAGE_PATH, REDIRECT_HOST, REDIRECT_PORT, GDRIVE_SCOPE, YANDEX_CREDENTIALS_PATH,
+                        YANDEX_TOKEN_PATH, FAILURE_MESSAGE_PATH)
 from ._local_server import LocalServer
 from ._file_operations import FileOperations
 
