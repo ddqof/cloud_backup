@@ -48,10 +48,6 @@ class GDriveFile:
         self.id = meta_inf["id"]
         self.name = meta_inf["name"]
         self.mime_type = meta_inf["mimeType"]
-        try:
-            self.parents = meta_inf["parents"]
-        except KeyError:
-            pass
 
     def __str__(self):
         return f"GDriveFileObject: {self.name}"

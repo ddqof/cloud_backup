@@ -133,25 +133,24 @@ class GDrive:
             ApiResponseException: an error occurred accessing API
         """
         next_page_token = None
-        if not dir_id:
-            if owners:
-                query = f"trashed={trashed} and '{','.join(owners)}' in owners"
-            else:
-                query = f"trashed={trashed}"
-        else:
+        if dir_id:
             if owners:
                 query = f"trashed={trashed} and '{dir_id}' in parents and '{','.join(owners)}' in owners"
             else:
                 query = f"trashed={trashed} and '{dir_id}' in parents"
-        flags = {
-            "q": query,
-            "pageSize": page_size,
-            "orderBy": order_by,
-            "fields": "files(name, mimeType, parents, id), nextPageToken",
-        }
+        else:
+            if owners:
+                query = f"trashed={trashed} and '{','.join(owners)}' in owners"
+            else:
+                query = f"trashed={trashed}"
         while True:
-            if next_page_token is not None:
-                flags.update({"pageToken": next_page_token})
+            flags = {
+                "q": query,
+                "pageSize": page_size,
+                "orderBy": order_by,
+                "fields": "files(name, mimeType, id), nextPageToken",
+                "pageToken": next_page_token,
+            }
             r = requests.get("https://www.googleapis.com/drive/v3/files",
                              params=flags, headers=self._auth_headers)
             GDrive._check_status(r)

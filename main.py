@@ -107,18 +107,14 @@ def print_yadisk_file(file):
 
 
 def main():
-    # init()
-    # args = parse_args()
-    # if args.storage == "gdrive":
-    #     handle_gdrive(args)
-    # elif args.storage == "yadisk":
-    #     handle_yadisk(args)
-    # else:
-    #     print(f"Unrecognized storage name: {args.storage}")
-    gdrive = GDrive()
-    file = GDriveFile({'id': '1vMnFicFD7xE4Uxhp0o3KQK7cEcjQZC6t', 'name': 'conspects',
-                       'mimeType': "application/vnd.google-apps.folder"})
-    gdrive.download(file)
+    init()
+    args = parse_args()
+    if args.storage == "gdrive":
+        handle_gdrive(args)
+    elif args.storage == "yadisk":
+        handle_yadisk(args)
+    else:
+        print(f"Unrecognized storage name: {args.storage}")
 
 
 if __name__ == "__main__":
