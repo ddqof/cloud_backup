@@ -2,7 +2,7 @@ import os
 import requests
 from urllib.parse import parse_qs
 from ._authenticators import YaDiskAuth
-from ._exceptions import ApiResponseException, IncorrectPathException
+from .exceptions import ApiResponseException, IncorrectPathException
 from ._file_objects import YaDiskFile
 
 
@@ -12,7 +12,7 @@ class YaDisk:
     """
 
     def __init__(self):
-        self.auth_headers = {
+        self._auth_headers = {
             "Content-Type": "application/json",
             "Authorization": YaDiskAuth.authenticate()
         }
@@ -34,25 +34,22 @@ class YaDisk:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
+        offset = 0
         keys = {
             "path": directory,
             "sort": sort,
             "limit": limit,
-            "offest": 0,
+            "offset": offset,
         }
-        r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/", params=keys,
-                         headers=self.auth_headers)
-        YaDisk._check_status(r)
-        yield [YaDiskFile(file) for file in r.json()["_embedded"]["items"]]
         while True:
-            keys["offset"] += limit
+            keys.update({"offset": offset})
             r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/", params=keys,
-                             headers=self.auth_headers)
+                             headers=self._auth_headers)
             YaDisk._check_status(r)
+            yield [YaDiskFile(file) for file in r.json()["_embedded"]["items"]]
+            offset += limit
             if not r.json()["_embedded"]["items"]:
                 return
-            else:
-                yield [YaDiskFile(file) for file in r.json()["_embedded"]["items"]]
 
     def list_files(self, sort="name", limit=20) -> list:
         """
@@ -64,26 +61,23 @@ class YaDisk:
             limit: The number of resources in the folder that should be described in the list.
 
         Returns:
-            Yields list of 'limit' size consists of YaDiskFileObjects represent each file and directory.
+            Yields list of 'limit' size consists of YaDiskFileObjects represent each file excluding directories.
         """
+        offset = 0
         keys = {
             "sort": sort,
             "limit": limit,
-            "offset": 0,
+            "offset": offset,
         }
-        r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/files", params=keys,
-                         headers=self.auth_headers)
-        YaDisk._check_status(r)
-        yield [YaDiskFile(file) for file in r.json()["items"]]
         while True:
-            keys["offset"] += limit
+            keys.update({"offset": offset})
             r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/files", params=keys,
-                             headers=self.auth_headers)
+                             headers=self._auth_headers)
             YaDisk._check_status(r)
+            yield [YaDiskFile(file) for file in r.json()["items"]]
+            offset += limit
             if not r.json()["items"]:
                 return
-            else:
-                yield [YaDiskFile(file) for file in r.json()["items"]]
 
     def download(self, path) -> None:
         """
@@ -97,7 +91,7 @@ class YaDisk:
             ApiResponseException: an error occurred accessing API.
         """
         YaDisk._check_path(path)
-        r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/download", headers=self.auth_headers,
+        r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/download", headers=self._auth_headers,
                          params={"path": path})
         YaDisk._check_status(r)
         r = r.json()
@@ -133,7 +127,7 @@ class YaDisk:
                 for file in filenames:
                     self._single_upload(os.path.join(root, file), f"{destination}/{file}")
 
-    def _initilal_upload(self, destination) -> str:
+    def _initial_upload(self, destination) -> str:
         """
         Send inital request to get ref for download a file
 
@@ -147,7 +141,7 @@ class YaDisk:
             ApiResponseException: an error occurred accessing API.
         """
         r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/upload", params={"path": destination},
-                         headers=self.auth_headers)
+                         headers=self._auth_headers)
         YaDisk._check_status(r)
         return r.json()["href"]
 
@@ -169,7 +163,7 @@ class YaDisk:
         YaDisk._check_path(destination)
         path = {"path": destination}
         r = requests.put("https://cloud-api.yandex.net/v1/disk/resources", params=path,
-                         headers=self.auth_headers)
+                         headers=self._auth_headers)
         YaDisk._check_status(r)
 
     @staticmethod

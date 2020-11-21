@@ -1,5 +1,5 @@
 from ._authenticators import YaDiskAuth as YaDiskAuth
-from ._exceptions import ApiResponseException as ApiResponseException, IncorrectPathException as IncorrectPathException
+from .exceptions import ApiResponseException as ApiResponseException, IncorrectPathException as IncorrectPathException
 from ._file_objects import YaDiskFile as YaDiskFile
 import requests
 
@@ -10,11 +10,11 @@ class YaDisk:
     def lsdir(self,
               directory: str,
               sort: str = ...,
-              limit: int = ...
+              limit: int = ...,
     ) -> list: ...
     def list_files(self,
                    sort: str = ...,
-                   limit: int = ...
+                   limit: int = ...,
     ) -> list: ...
     def download(self,
                  path: str
@@ -26,7 +26,7 @@ class YaDisk:
     def _initilal_upload(self,
                          destination: str
     ) -> str: ...
-    def _single_upload(self,
+    def     _single_upload(self,
                        local_path: str,
                        destination: str
     ) -> None: ...

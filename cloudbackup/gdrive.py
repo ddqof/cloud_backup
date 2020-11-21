@@ -3,9 +3,10 @@ import os
 import mimetypes
 import errno
 import requests
+import shutil
 from ._authenticators import GDriveAuth
 from ._file_objects import GDriveFile
-from ._exceptions import ApiResponseException, RemoteFileNotFoundException
+from .exceptions import ApiResponseException, RemoteFileNotFoundException
 
 
 class GDrive:
@@ -19,7 +20,7 @@ class GDrive:
             "Authorization": f"Bearer {GDriveAuth.authenticate()}"
         }
         self.files = []
-        for page in self.lsdir(page_size=1000):
+        for page in self.lsdir(owners=['me'], page_size=1000):
             self.files.extend(page)
 
     def upload(self, file_abs_path, multipart=False) -> None:
@@ -58,29 +59,38 @@ class GDrive:
         else:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_abs_path)
 
-    def download(self, file, path=None) -> None:
+    def download(self, file, path=None, overwrite=False) -> None:
         """
         Download file from Google Drive storage and write its data to file.
 
         Args:
             file: GDriveFileObject to download.
             path: Optional; pass absolute path where to store downloaded file.
+            overwrite: Whether to overwrite file if it already exists.
 
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        file_id = file.id
-        for file in self.lsdir(file_id):
-            if file.mime_type == "application/vnd.google-apps.folder":
-                os.mkdir(os.path.join(path, file.name))
+        if path is None:
+            dl_path = file.name
+        else:
+            dl_path = os.path.join(path, file.name)
+        if file.mime_type != "application/vnd.google-apps.folder":
+            file_bytes = self._download_file(file.id)
+            if not overwrite and os.path.exists(dl_path):
+                raise FileExistsError
             else:
-                file_bytes = self._download_file(file.id)
-                if path is None:
-                    dl_path = file.name
-                else:
-                    dl_path = os.path.join(path, file.name)
                 with open(dl_path, "wb+") as f:
                     f.write(file_bytes)
+        else:
+            if overwrite and os.path.exists:
+                shutil.rmtree(dl_path)
+                os.mkdir(dl_path)
+            else:
+                os.mkdir(dl_path)
+            for page in self.lsdir(file.id, owners=['me'], page_size=1000):
+                for file in page:
+                    self.download(file, dl_path)
 
     def _download_file(self, file_id) -> bytes:
         """
@@ -90,7 +100,7 @@ class GDrive:
             file_id: file id to download
 
         Returns:
-            tuple: (raw bytes of downloaded file, filename)
+            Raw bytes of downloaded file`
 
         Raises:
             ApiResponseException: an error occurred accessing API
@@ -102,12 +112,10 @@ class GDrive:
         GDrive._check_status(r)
         return r.content
 
-    def lsdir(self, dir_id=None, trashed=False, page_size=20, order_by="modifiedTime") -> list:
+    def lsdir(self, dir_id=None, trashed=False, owners=None, page_size=20, order_by="modifiedTime") -> list:
         """
         Make request to get list of `page_size` size consists of files and directories in
         directory with specified dir_id.
-        Make request to get directory meta-information list of limited size consists of
-        inner files and directories.
 
         Args:
             order_by: Sort key. Valid keys are: 'createdTime', 'folder' (folders will show first in the list),
@@ -115,45 +123,46 @@ class GDrive:
                but may be reversed with the 'desc' modifier.
             dir_id: If None then list all files, else list files in a directory with given id
             trashed: Whether to list files from the trash
+            owners: List or files owners
             page_size: Files count on one page (set value from 1 to 1000)
-        
+
         Returns:
             Yield list of `page_size` consists of GDriveFile objects
 
         Raises:
             ApiResponseException: an error occurred accessing API
         """
+        next_page_token = None
+        if not dir_id:
+            if owners:
+                query = f"trashed={trashed} and '{','.join(owners)}' in owners"
+            else:
+                query = f"trashed={trashed}"
+        else:
+            if owners:
+                query = f"trashed={trashed} and '{dir_id}' in parents and '{','.join(owners)}' in owners"
+            else:
+                query = f"trashed={trashed} and '{dir_id}' in parents"
         flags = {
-            "q": f"trashed={trashed} and 'me' in owners" if not dir_id
-            else f"trashed={trashed} and '{dir_id}' in parents and 'me' in owners",
+            "q": query,
             "pageSize": page_size,
             "orderBy": order_by,
             "fields": "files(name, mimeType, parents, id), nextPageToken",
         }
-        r = requests.get("https://www.googleapis.com/drive/v3/files",
-                         params=flags, headers=self._auth_headers)
-        GDrive._check_status(r)
-        r = r.json()
-        yield [GDriveFile(file) for file in r["files"]]
         while True:
+            if next_page_token is not None:
+                flags.update({"pageToken": next_page_token})
+            r = requests.get("https://www.googleapis.com/drive/v3/files",
+                             params=flags, headers=self._auth_headers)
+            GDrive._check_status(r)
+            r = r.json()
+            yield [GDriveFile(file) for file in r["files"]]
             try:
-                flags = {
-                    "q": f"trashed={trashed} and 'me' in owners" if not dir_id
-                    else f"trashed={trashed} and 'me' in owners '{dir_id}' in parents",
-                    "pageToken": r["nextPageToken"],
-                    "pageSize": page_size,
-                    "orderBy": order_by,
-                    "fields": "files(name, mimeType, parents, id), nextPageToken",
-                }
-                r = requests.get("https://www.googleapis.com/drive/v3/files",
-                                 params=flags, headers=self._auth_headers)
-                GDrive._check_status(r)
-                r = r.json()
-                yield [GDriveFile(file) for file in r["files"]]
+                next_page_token = r["nextPageToken"]
             except KeyError:
                 return
 
-    def get_file_object_by_id(self, start_id) -> None or str:
+    def get_file_object_by_id(self, start_id) -> GDriveFile:
         """
         This method used for user-friendly CLI interface that allows
         type only start of full file id.
@@ -163,8 +172,6 @@ class GDrive:
         Returns:
              GDriveFileObject that has id starts with given start_id
         """
-        if start_id == "root":
-            return start_id
         for file in self.files:
             try:
                 if file.id.startswith(start_id):
@@ -174,17 +181,17 @@ class GDrive:
 
     def mkdir(self, name, parent_id=None) -> str:
         """
-        Create a new directory in Google Drive storage
+        Create a new directory in Google Drive storage.
 
         Params:
-            name: directory name
-            parent_id: parent id of this folder
+            name: Directory name.
+            parent_id: Parent id of this folder.
 
         Returns:
-            id of created folder
+            Id of created folder
 
         Raises:
-             ApiResponseException: an error occurred accessing API
+            ApiResponseException: an error occurred accessing API
         """
         metadata = {
             "name": name,
@@ -325,7 +332,7 @@ class GDrive:
             api_response: response object from `requests` library.
 
         Raises:
-            ApiResponseException: if API response has unsuccessful status code.
+            ApiResponseException: If API response has unsuccessful status code.
         """
         if api_response.status_code in {400, 401, 403, 404, 429, 500}:
             raise ApiResponseException(api_response.status_code, api_response.json()["error"]["message"])
