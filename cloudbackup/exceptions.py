@@ -2,9 +2,11 @@ class ApiResponseException(Exception):
     """
     Raises when API cannot handle given request
     """
+
     def __init__(self, status_code, message):
-        self.status_code = status_code
+        super().__init__(message)
         self.message = message
+        self.status_code = status_code
 
 
 class IncorrectPathException(Exception):
@@ -14,7 +16,8 @@ class IncorrectPathException(Exception):
     """
 
     def __init__(self, path):
-        self.message = f"Path: {path} must not include a `:` character"
+        self.message = f"Path: {path} must not include a `:` character."
+        super().__init__(self.message)
 
 
 class RemoteFileNotFoundException(Exception):
@@ -23,4 +26,12 @@ class RemoteFileNotFoundException(Exception):
     """
 
     def __init__(self, file_id):
-        self.message = f"There is no file with {file_id}"
+        self.message = f"There is no file with {file_id}."
+        super().__init__(self.message)
+
+
+class FileIsNotDownloadableException(Exception):
+
+    def __init__(self, file_id):
+        self.message = f"G.Suite file with id: {file_id} isn't downloadable."
+        super().__init__(self.message)

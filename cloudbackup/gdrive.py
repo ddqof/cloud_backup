@@ -1,3 +1,4 @@
+from collections import namedtuple
 import json
 import os
 import mimetypes
@@ -6,7 +7,7 @@ import requests
 import shutil
 from ._authenticators import GDriveAuth
 from ._file_objects import GDriveFile
-from .exceptions import ApiResponseException, RemoteFileNotFoundException
+from .exceptions import ApiResponseException, RemoteFileNotFoundException, FileIsNotDownloadableException
 
 
 class GDrive:
@@ -19,9 +20,37 @@ class GDrive:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {GDriveAuth.authenticate()}"
         }
-        self.files = []
-        for page in self.lsdir(owners=['me'], page_size=1000):
-            self.files.extend(page)
+
+    def get_all_files(self, owners=None):
+        files = []
+        page_token = None
+        while True:
+            page_files, next_page_token = self.lsdir(owners=owners, page_size=1000, page_token=page_token)
+            files.extend(page_files)
+            if next_page_token is None:
+                break
+            else:
+                page_token = next_page_token
+        return files
+
+    def get_file_object_by_id(self, start_id):
+        """
+        This method used for user-friendly CLI interface that allows
+        type only start of full file id.
+
+        Args:
+            start_id: start of id
+        Returns:
+             GDriveFileObject that has id starts with given start_id
+        """
+        if start_id is None:
+            raise ValueError("Id mustn't be a None")
+        if start_id == "root":
+            return GDriveFile({"name": "root", "id": "root", "mimeType": "application/vnd.google-apps.folder"})
+        for file in self.get_all_files():
+            if file.id.startswith(start_id):
+                return file
+        raise RemoteFileNotFoundException(start_id)
 
     def upload(self, file_abs_path, multipart=False) -> None:
         """
@@ -59,7 +88,7 @@ class GDrive:
         else:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_abs_path)
 
-    def download(self, file, path=None, overwrite=False) -> None:
+    def download(self, file, path=None, overwrite=False, supress_g_suite=False) -> None:
         """
         Download file from Google Drive storage and write its data to file.
 
@@ -76,21 +105,30 @@ class GDrive:
         else:
             dl_path = os.path.join(path, file.name)
         if file.mime_type != "application/vnd.google-apps.folder":
-            file_bytes = self._download_file(file.id)
-            if not overwrite and os.path.exists(dl_path):
-                raise FileExistsError
-            else:
-                with open(dl_path, "wb+") as f:
-                    f.write(file_bytes)
+            try:
+                file_bytes = self._download_file(file.id)
+                if not overwrite and os.path.exists(dl_path):
+                    raise FileExistsError
+                else:
+                    with open(dl_path, "wb+") as f:
+                        f.write(file_bytes)
+            except FileIsNotDownloadableException:
+                if not supress_g_suite:
+                    raise
         else:
             if overwrite and os.path.exists:
                 shutil.rmtree(dl_path)
                 os.mkdir(dl_path)
             else:
                 os.mkdir(dl_path)
-            for page in self.lsdir(file.id, owners=['me'], page_size=1000):
-                for file in page:
+            while True:
+                next_page_token = None
+                page = self.lsdir(file.id, owners=['me'], page_token=next_page_token, page_size=1000)
+                for file in page.files:
                     self.download(file, dl_path)
+                next_page_token = page.next_page_token
+                if next_page_token is None:
+                    break
 
     def _download_file(self, file_id) -> bytes:
         """
@@ -109,30 +147,36 @@ class GDrive:
         r = requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
                          params=file_data,
                          headers=self._auth_headers)
+        if (r.status_code == 403 and
+                r.json()["error"]["message"] ==
+                "Only files with binary content can be downloaded. Use Export with Docs Editors files."):
+            raise FileIsNotDownloadableException(file_id)
         GDrive._check_status(r)
         return r.content
 
-    def lsdir(self, dir_id=None, trashed=False, owners=None, page_size=20, order_by="modifiedTime") -> list:
+    def lsdir(self, dir_id=None, trashed=False, owners=None, page_size=20, page_token=None,
+              order_by="modifiedTime") -> namedtuple("Page", "files next_page_token"):
         """
         Make request to get list of `page_size` size consists of files and directories in
         directory with specified dir_id.
 
         Args:
-            order_by: Sort key. Valid keys are: 'createdTime', 'folder' (folders will show first in the list),
-              'modifiedTime', 'name', 'recency', 'viewedByMeTime'. Each key sorts ascending by default,
-               but may be reversed with the 'desc' modifier.
             dir_id: If None then list all files, else list files in a directory with given id
             trashed: Whether to list files from the trash
             owners: List or files owners
             page_size: Files count on one page (set value from 1 to 1000)
+            page_token: Token of the next page
+            order_by: Sort key. Valid keys are: 'createdTime', 'folder' (folders will show first in the list),
+              'modifiedTime', 'name', 'recency', 'viewedByMeTime'. Each key sorts ascending by default,
+               but may be reversed with the 'desc' modifier. For example: modifiedTime desc.
 
         Returns:
-            Yield list of `page_size` consists of GDriveFile objects
+            |namedtuple| containing list of `page_size` size consists of GDriveFile objects and next page token.
+                If next page token is None, then there are no more pages.
 
         Raises:
             ApiResponseException: an error occurred accessing API
         """
-        next_page_token = None
         if dir_id:
             if owners:
                 query = f"trashed={trashed} and '{dir_id}' in parents and '{','.join(owners)}' in owners"
@@ -143,40 +187,22 @@ class GDrive:
                 query = f"trashed={trashed} and '{','.join(owners)}' in owners"
             else:
                 query = f"trashed={trashed}"
-        while True:
-            flags = {
-                "q": query,
-                "pageSize": page_size,
-                "orderBy": order_by,
-                "fields": "files(name, mimeType, id), nextPageToken",
-                "pageToken": next_page_token,
-            }
-            r = requests.get("https://www.googleapis.com/drive/v3/files",
-                             params=flags, headers=self._auth_headers)
-            GDrive._check_status(r)
-            r = r.json()
-            yield [GDriveFile(file) for file in r["files"]]
-            try:
-                next_page_token = r["nextPageToken"]
-            except KeyError:
-                return
-
-    def get_file_object_by_id(self, start_id) -> GDriveFile:
-        """
-        This method used for user-friendly CLI interface that allows
-        type only start of full file id.
-
-        Args:
-            start_id: start of id
-        Returns:
-             GDriveFileObject that has id starts with given start_id
-        """
-        for file in self.files:
-            try:
-                if file.id.startswith(start_id):
-                    return file
-            except TypeError:
-                raise RemoteFileNotFoundException(start_id)
+        flags = {
+            "q": query,
+            "pageSize": page_size,
+            "orderBy": order_by,
+            "fields": "files(name, mimeType, id), nextPageToken",
+            "pageToken": page_token,
+        }
+        r = requests.get("https://www.googleapis.com/drive/v3/files",
+                         params=flags, headers=self._auth_headers)
+        GDrive._check_status(r)
+        Page = namedtuple("Page", "files next_page_token")
+        r = r.json()
+        if "nextPageToken" in r:
+            return Page([GDriveFile(file) for file in r["files"]], r["nextPageToken"])
+        else:
+            return Page([GDriveFile(file) for file in r["files"]], None)
 
     def mkdir(self, name, parent_id=None) -> str:
         """

@@ -30,7 +30,10 @@ class YaDiskFile:
             pass
 
     def __str__(self):
-        return f"YaDiskFileObject: {self.path}"
+        return f"YaDiskFileObject: {self.name}"
+
+    def __repr__(self):
+        return f"<YaDiskFileObject: {list(self.__dict__.values())}"
 
 
 class GDriveFile:
@@ -51,3 +54,6 @@ class GDriveFile:
 
     def __str__(self):
         return f"GDriveFileObject: {self.name}"
+
+    def __repr__(self):
+        return f"<GDriveFileObject: {list(self.__dict__.values())}"

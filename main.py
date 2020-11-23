@@ -4,58 +4,65 @@ import os
 from colorama import init, Fore, Style
 from cloudbackup.gdrive import GDrive
 from cloudbackup.yadisk import YaDisk
-from cloudbackup.exceptions import RemoteFileNotFoundException
-from defaults import (GDRIVE_SORT_KEYS, YADISK_SORT_KEYS,
-                       CONFIRM_CHOICE_STRING, ABORTED_MSG)
-from cloudbackup._file_objects import GDriveFile
+from cloudbackup.exceptions import RemoteFileNotFoundException, FileIsNotDownloadableException
+from defaults import (GDRIVE_SORT_KEYS, YADISK_SORT_KEYS, CONFIRM_CHOICE_STRING,
+                      ABORTED_MSG, SUCCESSFUL_DOWNLOAD_MSG, SUCCESSFUL_UPLOAD_MSG,
+                      SUCCESSFUL_DELETE_MSG, SUCCESSFUL_TRASH_MSG, G_SUITE_DIRECTORY,
+                      G_SUITE_FILE)
 from parser import parse_args
 
 
 def handle_gdrive(args):
     gdrive = GDrive()
-    try:
-        file = gdrive.get_file_object_by_id(args.id)
-        file_id = file.id
-    except RemoteFileNotFoundException:
-        file_id = None
     if args.list:
-        if args.all:
-            files = []
-            pages = gdrive.lsdir(dir_id=file_id, owners=['me'], page_size=1000,
-                                 order_by=GDRIVE_SORT_KEYS[args.order_by])
-            for page in pages:
-                files.extend(page)
+        if args.id is None:
+            files = gdrive.get_all_files(owners=['me'])
             for file in files:
                 print_gdrive_file(file)
         else:
-            pages = gdrive.lsdir(dir_id=file_id, owners=['me'], page_size=20, order_by=GDRIVE_SORT_KEYS[args.order_by])
-            for page in pages:
-                for file in page:
+            while True:
+                file = gdrive.get_file_object_by_id(args.id)
+                page = gdrive.lsdir(dir_id=file.id, owners=['me'], page_size=20,
+                                    order_by=GDRIVE_SORT_KEYS[args.order_by])
+                for file in page.files:
                     print_gdrive_file(file)
-                user_confirm = input(f"List next page? {CONFIRM_CHOICE_STRING}")
-                if user_confirm in {"y", "yes", ""}:
-                    continue
+                if page.next_page_token is not None:
+                    user_confirm = input(f"List next page? {CONFIRM_CHOICE_STRING}")
+                    if user_confirm in {"y", "yes", ""}:
+                        continue
+                    else:
+                        print(ABORTED_MSG)
+                        break
                 else:
-                    print(ABORTED_MSG)
                     break
     if args.download:
+        file = gdrive.get_file_object_by_id(args.id)
         try:
-            print(gdrive.download(file, path=args.directory))
-        except UnboundLocalError:
-            print("Please specify ")
+            gdrive.download(file, path=args.directory, )
+        except FileIsNotDownloadableException:
+            if file.mime_type == "application/vnd.google-apps.folder":
+                print(G_SUITE_DIRECTORY.format(file_name=file.name))
+            else:
+                print(G_SUITE_FILE.format(file_name=file.name))
+        print(SUCCESSFUL_DOWNLOAD_MSG.format(file_name=file.name))
     if args.upload:
-        print(gdrive.upload(args.directory))
+        gdrive.upload(args.directory)
+        print(SUCCESSFUL_UPLOAD_MSG.format(file_name=args.directory))
     if args.remove:
+        file = gdrive.get_file_object_by_id(args.id)
         if args.permanently:
             user_confirm = input(f"Are you sure you want to delete {file.name} file? {CONFIRM_CHOICE_STRING}")
             if user_confirm in {"y", "yes", ""}:
-                print(gdrive.remove(file_id=file.id, permanently=True))
+                gdrive.remove(file_id=file.id, permanently=True)
+                print(SUCCESSFUL_DELETE_MSG.format(file_name=file.name))
+
             else:
                 print(ABORTED_MSG)
         else:
             user_confirm = input(f"Are you sure you want to move {file.name} to trash? {CONFIRM_CHOICE_STRING}")
             if user_confirm in {"y", "yes", ""}:
-                print(gdrive.remove(file_id=file.id))
+                gdrive.remove(file_id=file.id)
+                print(SUCCESSFUL_TRASH_MSG.format(file_name=file.name))
             else:
                 print(ABORTED_MSG)
 
