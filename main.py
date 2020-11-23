@@ -14,42 +14,45 @@ from parser import parse_args
 
 def handle_gdrive(args):
     gdrive = GDrive()
-    if args.list:
-        if args.id is None:
+    if args.operation == "ls":
+        if args.file is None:
             files = gdrive.get_all_files(owners=['me'])
             for file in files:
                 print_gdrive_file(file)
         else:
-            while True:
-                file = gdrive.get_file_object_by_id(args.id)
-                page = gdrive.lsdir(dir_id=file.id, owners=['me'], page_size=20,
-                                    order_by=GDRIVE_SORT_KEYS[args.order_by])
-                for file in page.files:
-                    print_gdrive_file(file)
-                if page.next_page_token is not None:
-                    user_confirm = input(f"List next page? {CONFIRM_CHOICE_STRING}")
-                    if user_confirm in {"y", "yes", ""}:
-                        continue
+            file = gdrive.get_file_object_by_id(args.file)
+            if file.mime_type != "application/vnd.google-apps.folder":
+                print_gdrive_file(file)
+            else:
+                while True:
+                    page = gdrive.lsdir(dir_id=file.id, owners=['me'], page_size=20,
+                                        order_by=GDRIVE_SORT_KEYS[args.order_by])
+                    for file in page.files:
+                        print_gdrive_file(file)
+                    if page.next_page_token is not None:
+                        user_confirm = input(f"List next page? {CONFIRM_CHOICE_STRING}")
+                        if user_confirm in {"y", "yes", ""}:
+                            continue
+                        else:
+                            print(ABORTED_MSG)
+                            break
                     else:
-                        print(ABORTED_MSG)
                         break
-                else:
-                    break
-    if args.download:
-        file = gdrive.get_file_object_by_id(args.id)
+    elif args.operation == "dl":
+        file = gdrive.get_file_object_by_id(args.file)
         try:
-            gdrive.download(file, path=args.directory, )
+            gdrive.download(file, destination=args.destination, overwrite=args.overwrite)
+            print(SUCCESSFUL_DOWNLOAD_MSG.format(file_name=file.name))
         except FileIsNotDownloadableException:
             if file.mime_type == "application/vnd.google-apps.folder":
                 print(G_SUITE_DIRECTORY.format(file_name=file.name))
             else:
                 print(G_SUITE_FILE.format(file_name=file.name))
-        print(SUCCESSFUL_DOWNLOAD_MSG.format(file_name=file.name))
-    if args.upload:
-        gdrive.upload(args.directory)
-        print(SUCCESSFUL_UPLOAD_MSG.format(file_name=args.directory))
-    if args.remove:
-        file = gdrive.get_file_object_by_id(args.id)
+    elif args.operation == "ul":
+        gdrive.upload(args.file_name)
+        print(SUCCESSFUL_UPLOAD_MSG.format(file_name=args.file_name))
+    if args.operation == "rm":
+        file = gdrive.get_file_object_by_id(args.file)
         if args.permanently:
             user_confirm = input(f"Are you sure you want to delete {file.name} file? {CONFIRM_CHOICE_STRING}")
             if user_confirm in {"y", "yes", ""}:
@@ -120,8 +123,6 @@ def main():
         handle_gdrive(args)
     elif args.storage == "yadisk":
         handle_yadisk(args)
-    else:
-        print(f"Unrecognized storage name: {args.storage}")
 
 
 if __name__ == "__main__":

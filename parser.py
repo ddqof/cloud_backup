@@ -45,13 +45,16 @@ def parse_args():
                            nargs="?",
                            help="Pass directory where you want to save downloaded file. If not specified download to "
                                 "present working directory.")
+    dl_parser.add_argument("-ov", "--overwrite",
+                           action="store_true",
+                           help="overwrite if file already exists")
     dl_parser.add_argument("-f", "--force",
                            action="store_true",
                            help="skip G.Suite files when downloading a directory or skip the file itself.")
 
     ul_parser = subparsers.add_parser("ul",
                                       help="upload a file or directory")
-    ul_parser.add_argument("file",
+    ul_parser.add_argument("file_name",
                            help="pass local filename")
 
     rm_parser = subparsers.add_parser("rm",

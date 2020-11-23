@@ -88,35 +88,32 @@ class GDrive:
         else:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_abs_path)
 
-    def download(self, file, path=None, overwrite=False, supress_g_suite=False) -> None:
+    def download(self, file, destination=None, overwrite=False) -> None:
         """
         Download file from Google Drive storage and write its data to file.
 
+        По дефолту скипает g_suite файлы.
         Args:
             file: GDriveFileObject to download.
-            path: Optional; pass absolute path where to store downloaded file.
+            destination: Optional; pass absolute path where to store downloaded file.
             overwrite: Whether to overwrite file if it already exists.
 
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        if path is None:
+        if destination is None:
             dl_path = file.name
         else:
-            dl_path = os.path.join(path, file.name)
-        if file.mime_type != "application/vnd.google-apps.folder":
-            try:
-                file_bytes = self._download_file(file.id)
-                if not overwrite and os.path.exists(dl_path):
-                    raise FileExistsError
-                else:
-                    with open(dl_path, "wb+") as f:
-                        f.write(file_bytes)
-            except FileIsNotDownloadableException:
-                if not supress_g_suite:
-                    raise
-        else:
-            if overwrite and os.path.exists:
+            dl_path = os.path.join(destination, file.name)
+        if not file.mime_type.startswith("application/vnd.google-apps"):
+            file_bytes = self._download_file(file.id)
+            if not overwrite and os.path.exists(dl_path):
+                raise FileExistsError
+            else:
+                with open(dl_path, "wb+") as f:
+                    f.write(file_bytes)
+        elif file.mime_type == "application/vnd.google-apps.folder":
+            if overwrite and os.path.exists(dl_path):
                 shutil.rmtree(dl_path)
                 os.mkdir(dl_path)
             else:
@@ -125,7 +122,7 @@ class GDrive:
                 next_page_token = None
                 page = self.lsdir(file.id, owners=['me'], page_token=next_page_token, page_size=1000)
                 for file in page.files:
-                    self.download(file, dl_path)
+                    self.download(file, dl_path, overwrite=overwrite)
                 next_page_token = page.next_page_token
                 if next_page_token is None:
                     break
@@ -147,10 +144,6 @@ class GDrive:
         r = requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
                          params=file_data,
                          headers=self._auth_headers)
-        if (r.status_code == 403 and
-                r.json()["error"]["message"] ==
-                "Only files with binary content can be downloaded. Use Export with Docs Editors files."):
-            raise FileIsNotDownloadableException(file_id)
         GDrive._check_status(r)
         return r.content
 

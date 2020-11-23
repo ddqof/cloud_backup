@@ -32,6 +32,6 @@ class RemoteFileNotFoundException(Exception):
 
 class FileIsNotDownloadableException(Exception):
 
-    def __init__(self, file_id):
-        self.message = f"G.Suite file with id: {file_id} isn't downloadable."
+    def __init__(self, file):
+        self.message = f"G.Suite file {file.name} ({file.id})  isn't downloadable."
         super().__init__(self.message)
