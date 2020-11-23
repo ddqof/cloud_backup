@@ -10,7 +10,8 @@ def parse_args():
         epilog="""Author: Dmitry Podaruev <ddqof.vvv@gmail.com>"""
     )
     parser.add_argument("storage",
-                        help="remote storage name (gdrive, yadisk)")
+                        help="remote storage name",
+                        choices=["gdrive", "yadisk"])
     subparsers = parser.add_subparsers(title="available operations",
                                        help="operation",
                                        dest="operation",
@@ -40,9 +41,13 @@ def parse_args():
     dl_parser = subparsers.add_parser("dl",
                                       help="download a file or directory",
                                       parents=[file_parser])
+    dl_parser.add_argument("destination",
+                           nargs="?",
+                           help="Pass directory where you want to save downloaded file. If not specified download to "
+                                "present working directory.")
     dl_parser.add_argument("-f", "--force",
                            action="store_true",
-                           help="skip G.Suite files when downloading a directory or skip the file itself")
+                           help="skip G.Suite files when downloading a directory or skip the file itself.")
 
     ul_parser = subparsers.add_parser("ul",
                                       help="upload a file or directory")

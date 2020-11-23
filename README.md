@@ -13,19 +13,20 @@ It's simple tool for backing your data up on Google Drive and Yandex.Disk cloud 
 ## Examples of usage
 
 ### List
-* `./main.py -s gdrive -ls` to list all files (directories marked cyan color) on remote storage.
-* `./main.py -s gdrive -ls -id root` to list all files in `root` directory
+* `./main.py gdrive ls` to list all files (directories marked cyan color) on Google Drive storage.
+* `./main.py gdrive ls root` to list all files in `root` directory
 
-Tip: pipe output of `-ls` command to `less` unix util for page-view.
-For example: `./main.py -s gdrive -ls | less`.
+Tip: pipe output of `ls` command to `less` unix util for page-view.
+For example: `./main.py gdrive ls | less`.
 
 ### Upload
-* `./main.py -s gdrive -ul -p /home/user` to upload directory `/home/user` to root directory.
-* `./main.py -s gdrive -ul -p /home/user/test.py` to upload `test.py` file to root directory.
+* `./main.py gdrive ul /home/user` to upload directory `/home/user` to root directory.
+* `./main.py gdrive /home/user/test.py` to upload `test.py` file to root directory.
 
 ### Downloading
-* `./main.py -s gdrive -dl -id 0xyz` to download file with id starts with `0xyz` in current working directory
-* `./main.py -s gdrive -dl -id 0xyz -p /home/user` to download file with id starts with `0xyz` to `/home/user` directory
+* `./main.py gdrive dl 0xyz` to download file with id starts with `0xyz` in current working directory
+* `./main.py gdrive dl 0xyz /home/user` to download file with id starts with `0xyz` to `/home/user` directory
 
 ### Delete
-* `./main.py -s gdrive -rm -id 0xyz` to delete file or directory with id starts with `0xyz`. Be careful! It deletes without ability to restore.
+* `./main.py gdrive rm 0xyz` to move file or directory with id starts with `0xyz` to the trash.
+* `./main.py gdrive rm -p 0xyz` to permanently delete file with id starts with `0xyz`. 
