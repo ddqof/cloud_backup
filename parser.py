@@ -5,52 +5,55 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        usage=" ./main.py [-s storage_name] STORAGE_NAME [-ls list_files] [-a all] [-o order_by]\n\t"
-              " [-dl download_file] [-rm remove_file] [-p remove_permanently_flag]\n\t"
-              " [-ul upload_file] [-id file_id] ID [-d directory] PATH",
         prog="main.py",
-        description="""Tool for operate with your files on Google Drive or YandexDisk storage""",
+        description="""Tool for operate with your files on Google Drive or YandexDisk storage.""",
         epilog="""Author: Dmitry Podaruev <ddqof.vvv@gmail.com>"""
     )
-    parser.add_argument("-s", "--storage",
-                        metavar="",
-                        help="specify remote storage name"
-                             " (gdrive, yadisk)",
-                        required=True,
-                        type=str)
-    parser.add_argument("-ls", "--list",
-                        action="store_true",
-                        help="List files"
-                             " (if path not specified list all files)")
-    parser.add_argument("-a", "--all",
-                        action="store_true",
-                        help="Flag for listing all files (not by pages)")
-    parser.add_argument("-o", "--order_by",
-                        metavar="",
-                        default="modified",
-                        help="Sort key for file listing. Available keys are: "
-                             "'name', 'created', 'modified', 'size'."
-                             " Also 'folder' (will show folders first) for GDrive only and 'path'"
-                             " (will sort by path) for YaDisk only. To sort in "
-                             "reversed order add prefix 'rev'. For example: 'rev_name'.")
-    parser.add_argument("-dl", "--download",
-                        action="store_true",
-                        help="download file")
-    parser.add_argument("-d", "--directory",
-                        metavar="",
-                        help="Specify directory and pass it with -dl argument "
-                             "to download file to specific directory")
-    parser.add_argument("-rm", "--remove",
-                        action="store_true",
-                        help="Remove file")
-    parser.add_argument("-p", "--permanently",
-                        action="store_true",
-                        help="Delete file permanently")
-    parser.add_argument("-ul", "--upload",
-                        action="store_true",
-                        help="Upload file")
-    parser.add_argument("-id",
-                        metavar="",
-                        help="Id of file in Google Drive storage or file path in YandexDisk")
+    parser.add_argument("storage",
+                        help="remote storage name (gdrive, yadisk)")
+    subparsers = parser.add_subparsers(title="available operations",
+                                       help="operation",
+                                       dest="operation",
+                                       required=True)
+
+    file_parser = argparse.ArgumentParser(add_help=False)  # for preventing repeat of file arg
+    file_parser.add_argument("file",
+                             help="If work with GDrive pass file (directory) id."
+                                  " If work with YaDisk pass file (directory) path.")
+
+    ls_parser = subparsers.add_parser("ls",
+                                      help="list a directory")
+    ls_parser.add_argument("file",
+                           nargs="?",
+                           help="If work with GDrive pass directory id. If work with YaDisk pass directory path."
+                                " If not specified listing all files.")
+    ls_parser.add_argument('-o', "--order_by",
+                           metavar="",
+                           default="modified",
+                           help="Sort key for file listing. Available keys are: "
+                                "'name', 'created', 'modified', 'size'."
+                                " Also 'folder' (will show folders first) for GDrive only and 'path'"
+                                " (will sort by path) for YaDisk only. To sort in"
+                                " reversed order add prefix 'rev'. For example: 'rev_name'."
+                           )
+
+    dl_parser = subparsers.add_parser("dl",
+                                      help="download a file or directory",
+                                      parents=[file_parser])
+    dl_parser.add_argument("-f", "--force",
+                           action="store_true",
+                           help="skip G.Suite files when downloading a directory or skip the file itself")
+
+    ul_parser = subparsers.add_parser("ul",
+                                      help="upload a file or directory")
+    ul_parser.add_argument("file",
+                           help="pass local filename")
+
+    rm_parser = subparsers.add_parser("rm",
+                                      help="remove a file",
+                                      parents=[file_parser])
+    rm_parser.add_argument("-p", "--permanently",
+                           action="store_true",
+                           help="permanently delete file skipping the trash")
 
     return parser.parse_args()
