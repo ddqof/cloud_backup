@@ -26,8 +26,8 @@ class RemoteFileNotFoundException(Exception):
     """
 
     def __init__(self, file_id):
-        self.message = f"There is no file with {file_id}."
-        super().__init__(self.message)
+        self.message = f"There is no file with id: {file_id}."
+        super().__init__(self.message)  # TODO: лучше организовать исключения, например нужно для gdrive принимать id, а для yadisk path
 
 
 class FileIsNotDownloadableException(Exception):

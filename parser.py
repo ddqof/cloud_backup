@@ -17,14 +17,14 @@ def parse_args():
                                        dest="operation",
                                        required=True)
 
-    file_parser = argparse.ArgumentParser(add_help=False)  # for preventing repeat of file arg
-    file_parser.add_argument("file",
-                             help="If work with GDrive pass file (directory) id."
-                                  " If work with YaDisk pass file (directory) path.")
+    remote_file_parser = argparse.ArgumentParser(add_help=False)  # for preventing repeat of file arg
+    remote_file_parser.add_argument("remote_file",
+                                    help="If work with GDrive pass file (directory) id."
+                                         " If work with YaDisk pass file (directory) path.")
 
     ls_parser = subparsers.add_parser("ls",
                                       help="list a directory")
-    ls_parser.add_argument("file",
+    ls_parser.add_argument("remote_file",
                            nargs="?",
                            help="If work with GDrive pass directory id. If work with YaDisk pass directory path."
                                 " If not specified listing all files.")
@@ -40,7 +40,7 @@ def parse_args():
 
     dl_parser = subparsers.add_parser("dl",
                                       help="download a file or directory",
-                                      parents=[file_parser])
+                                      parents=[remote_file_parser])
     dl_parser.add_argument("destination",
                            nargs="?",
                            help="Pass directory where you want to save downloaded file. If not specified download to "
@@ -54,12 +54,12 @@ def parse_args():
 
     ul_parser = subparsers.add_parser("ul",
                                       help="upload a file or directory")
-    ul_parser.add_argument("file_name",
+    ul_parser.add_argument("local_file",
                            help="pass local filename")
 
     rm_parser = subparsers.add_parser("rm",
                                       help="remove a file",
-                                      parents=[file_parser])
+                                      parents=[remote_file_parser])
     rm_parser.add_argument("-p", "--permanently",
                            action="store_true",
                            help="permanently delete file skipping the trash")

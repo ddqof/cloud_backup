@@ -22,16 +22,15 @@ class GDrive:
         }
 
     def get_all_files(self, owners=None):
-        files = []
-        page_token = None
+        all_files, page_token = [], None
         while True:
             page_files, next_page_token = self.lsdir(owners=owners, page_size=1000, page_token=page_token)
-            files.extend(page_files)
+            all_files.extend(page_files)
             if next_page_token is None:
                 break
             else:
                 page_token = next_page_token
-        return files
+        return all_files
 
     def get_file_object_by_id(self, start_id):
         """
