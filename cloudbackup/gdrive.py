@@ -2,12 +2,10 @@ from collections import namedtuple
 import json
 import os
 import mimetypes
-import errno
 import requests
-import shutil
 from ._authenticators import GDriveAuth
 from ._file_objects import GDriveFile
-from .exceptions import ApiResponseException, RemoteFileNotFoundException, FileIsNotDownloadableException
+from .exceptions import ApiResponseException, FileIsNotDownloadableException
 
 
 class GDrive:
@@ -21,112 +19,7 @@ class GDrive:
             "Authorization": f"Bearer {GDriveAuth.authenticate()}"
         }
 
-    def get_all_files(self, owners=None):
-        all_files, page_token = [], None
-        while True:
-            page_files, next_page_token = self.lsdir(owners=owners, page_size=1000, page_token=page_token)
-            all_files.extend(page_files)
-            if next_page_token is None:
-                break
-            else:
-                page_token = next_page_token
-        return all_files
-
-    def get_file_object_by_id(self, start_id):
-        """
-        This method used for user-friendly CLI interface that allows
-        type only start of full file id.
-
-        Args:
-            start_id: start of id
-        Returns:
-             GDriveFileObject that has id starts with given start_id
-        """
-        if start_id is None:
-            raise ValueError("Id mustn't be a None")
-        if start_id == "root":
-            return GDriveFile({"name": "root", "id": "root", "mimeType": "application/vnd.google-apps.folder"})
-        for file in self.get_all_files():
-            if file.id.startswith(start_id):
-                return file
-        raise RemoteFileNotFoundException(start_id)
-
-    def upload(self, file_abs_path, multipart=False) -> None:
-        """
-        Upload file to Google Drive storage
-
-        Args:
-            file_abs_path: absolute file path.
-            multipart: use True if you want to upload safely, else set False.
-
-        Raises:
-            FileNotFoundError: an error occurred accessing file using `file_abs_path`.
-            ApiResponseException: an error occurred accessing API.
-        """
-        if multipart:
-            upload = self._multipart_upload
-        else:
-            upload = self._single_upload
-        if os.path.isfile(file_abs_path):
-            upload(file_abs_path)
-        elif os.path.isdir(file_abs_path):
-            parents = {}
-            tree = os.walk(file_abs_path)
-            for root, dirs, filenames in tree:
-                if root.endswith(os.path.sep):
-                    root = root[:-1]
-                parent_id = parents[os.path.split(root)[0]] if parents else []
-                # os.path.split returns pair (head, tail) of path
-                folder_id = self.mkdir(os.path.split(root)[-1],
-                                       parent_id=parent_id)
-                if not filenames:
-                    continue
-                for file in filenames:
-                    upload(os.path.join(root, file), parent_id=folder_id)
-                parents[root] = folder_id
-        else:
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_abs_path)
-
-    def download(self, file, destination=None, overwrite=False) -> None:
-        """
-        Download file from Google Drive storage and write its data to file.
-
-        По дефолту скипает g_suite файлы.
-        Args:
-            file: GDriveFileObject to download.
-            destination: Optional; pass absolute path where to store downloaded file.
-            overwrite: Whether to overwrite file if it already exists.
-
-        Raises:
-            ApiResponseException: an error occurred accessing API.
-        """
-        if destination is None:
-            dl_path = file.name
-        else:
-            dl_path = os.path.join(destination, file.name)
-        if not file.mime_type.startswith("application/vnd.google-apps"):
-            file_bytes = self._download_file(file.id)
-            if not overwrite and os.path.exists(dl_path):
-                raise FileExistsError
-            else:
-                with open(dl_path, "wb+") as f:
-                    f.write(file_bytes)
-        elif file.mime_type == "application/vnd.google-apps.folder":
-            if overwrite and os.path.exists(dl_path):
-                shutil.rmtree(dl_path)
-                os.mkdir(dl_path)
-            else:
-                os.mkdir(dl_path)
-            while True:
-                next_page_token = None
-                page = self.lsdir(file.id, owners=['me'], page_token=next_page_token, page_size=1000)
-                for file in page.files:
-                    self.download(file, dl_path, overwrite=overwrite)
-                next_page_token = page.next_page_token
-                if next_page_token is None:
-                    break
-
-    def _download_file(self, file_id) -> bytes:
+    def download(self, file_id) -> bytes:
         """
         Make request for downloading file from GoogleDrive storage
 
@@ -232,7 +125,8 @@ class GDrive:
             ApiResponseException: an error occurred accessing API.
         """
         if permanently:
-            r = requests.request("DELETE", f"https://www.googleapis.com/drive/v3/files/{file_id}")
+            r = requests.request("DELETE", f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                                 headers=self._auth_headers)
         else:
             r = requests.post(f"https://www.googleapis.com/drive/v2/files/{file_id}/trash",
                               headers=self._auth_headers)
@@ -249,7 +143,7 @@ class GDrive:
                              headers=self._auth_headers)
         GDrive._check_status(r)
 
-    def _send_initial_request(self, file_path, parent_id=None) -> requests.models.Response:
+    def get_upload_link(self, file_path, parent_id=None) -> str:
         """
         Send initial request to prepare API to receive further requests to upload
 
@@ -267,7 +161,6 @@ class GDrive:
         filename = os.path.basename(file_path)
         headers = {
             "X-Upload-Content-Type": mimetypes.guess_type(file_path)[0]
-            # returns tuple (mimetype, encoding)
         }
         headers.update(self._auth_headers)
         metadata = {"name": filename}
@@ -277,68 +170,28 @@ class GDrive:
         r = requests.post("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
                           headers=headers, data=metadata)
         GDrive._check_status(r)
-        return r
+        return r.headers["location"]
 
-    def _single_upload(self, file_path, parent_id=None) -> dict:
+    def upload_entire_file(self, link, file_data):
+        r = requests.put(link, data=file_data)
+        GDrive._check_status(r)
+
+    def upload_chunk(self, link, file_data, uploaded_size, chunk_size, file_size):
         """
-        Perform file upload by one single request. Faster than multipart upload.
-
-        Args:
-            file_path: absolute path to file for upload
-            parent_id: (optional) id of parent folder passed in `file_path`
 
         Returns:
-            A dict-like response from GoogleDrive API. For example:
-
-            {'kind': 'drive#file', 'id': '1cqoEi5O1_UhplHXeTJXXXXXXXXa6rFfq',
-             'name': 'test.txt', 'mimeType': 'text/plain'}
-
-        Raises:
-            ApiResponseException: an error occurred accessing API
+            |namedtuple| UploadStatus("code", "received"). If code equals 200 upload is completed, if 308 then
+            server received chunk and you can proceed uploading another chunks.
         """
-        response = self._send_initial_request(file_path, parent_id)
-        resumable_uri = response.headers["location"]
-        with open(file_path, "rb") as f:
-            file_data = f.read()
-        r = requests.put(resumable_uri, data=file_data,
-                         headers=response.headers)
+        chunk_info = {
+            "Content-Length": chunk_size,
+            "Content-Range": f"bytes {str(uploaded_size)}-{str(uploaded_size + chunk_size - 1)}/{file_size}"
+        }
+        r = requests.put(link, data=file_data, headers=chunk_info)
         GDrive._check_status(r)
-        return r.json()
-
-    def _multipart_upload(self, file_path, parent_id=None) -> None:
-        """
-        Perform file upload by few little requests. Slower than single upload,
-        but suitable if you want to make progress bar for upload status.
-
-        Params:
-            file_path: absolute path to file for upload
-            parent_id: Optional; id of parent folder passed in `file_path`
-        """
-        file_size = os.path.getsize(file_path)
-        response = self._send_initial_request(file_path, parent_id)
-        CHUNK_SIZE = 256 * 1024
-        headers = response.headers
-        resumable_uri = headers["location"]
-        uploaded_size = 0
-        with open(file_path, "rb") as file:
-            while uploaded_size < file_size:
-                if CHUNK_SIZE > file_size:
-                    CHUNK_SIZE = file_size
-                if file_size - uploaded_size < CHUNK_SIZE:
-                    CHUNK_SIZE = file_size - uploaded_size
-                file_data = file.read(CHUNK_SIZE)
-                headers["Content-Length"] = str(CHUNK_SIZE)
-                headers[
-                    "Content-Range"] = \
-                    f"bytes {str(uploaded_size)}-{str(uploaded_size + CHUNK_SIZE - 1)}/{file_size}"
-                r = requests.put(resumable_uri, data=file_data, headers=headers)
-                uploaded_size += CHUNK_SIZE
-                print(r.status_code)
-                if r.status_code == 200:
-                    break
-                diff = int(r.headers["range"].split("-")[1]) + 1 - uploaded_size
-                # range header looks like "bytes=0-n", where n - received bytes
-                file.seek(diff, 1)  # second parameter means seek relative to the current position
+        UploadStatus = namedtuple("UploadStatus", ["code", "received"])
+        return UploadStatus(r.status_code, int(r.headers["range"].split("-")[1]) + 1)
+        # range header looks like "bytes=0-n", where n - received bytes
 
     @staticmethod
     def _check_status(api_response) -> None:

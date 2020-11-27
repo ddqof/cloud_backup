@@ -1,4 +1,3 @@
-import os
 from collections import namedtuple
 
 import requests
@@ -71,7 +70,7 @@ class YaDisk:
             raise ApiResponseException(r.status_code, r.json()["description"])
         return [YaDiskFile(file) for file in r.json()["items"]]
 
-    def download(self, path) -> None:
+    def download(self, path):
         """
         Make a request for downloading file from YaDisk storage and
         then writing file's data to file.
@@ -93,36 +92,10 @@ class YaDisk:
         download_request = requests.get(request_for_link["href"])
         if download_request.status_code not in {200}:
             raise ApiResponseException(download_request.status_code, download_request.json()["description"])
-        with open(parsed_url["filename"][0], "wb+") as f:
-            f.write(download_request.content)
+        File = namedtuple("File", ["name", "data"])
+        return File(parsed_url["filename"][0], download_request.content)
 
-    def upload(self, file_abs_path, destination="/") -> None:
-        """
-        Upload file to YandexDisk storage
-
-        Args:
-            file_abs_path: absolute path of file.
-            destination: where to store uploaded file on YandexDisk.
-
-        Raises:
-            ApiResponseException: an error occurred accessing API.
-        """
-        if os.path.isfile(file_abs_path):
-            self._single_upload(file_abs_path, destination)
-        elif os.path.isdir(file_abs_path):
-            if file_abs_path.endswith(os.path.sep):
-                file_abs_path = file_abs_path[:-1]
-            tree = os.walk(file_abs_path)
-            head = os.path.split(file_abs_path)[0]
-            for root, dirs, filenames in tree:
-                destination = root.split(head)[1]
-                self.mkdir(destination)
-                if not filenames:
-                    continue
-                for file in filenames:
-                    self._single_upload(os.path.join(root, file), f"{destination}/{file}")
-
-    def _initial_upload(self, destination) -> str:
+    def _get_upload_link(self, destination) -> str:
         """
         Send initial request to get ref for download a file
 
@@ -135,15 +108,16 @@ class YaDisk:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/upload", params={"path": destination},
+        r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/upload",
+                         params={"path": destination},
                          headers=self._auth_headers)
         if r.status_code not in {200}:
             raise ApiResponseException(r.status_code, r.json()["description"])
         return r.json()["href"]
 
-    def _single_upload(self, local_path, destination) -> None:
+    def single_upload(self, local_path, destination) -> None:
         YaDisk._check_path(destination)
-        upload_ref = self._initial_upload(destination)
+        upload_ref = self._get_upload_link(destination)
         with open(local_path, "rb") as f:
             file_data = f.read()
         upload_request = requests.put(upload_ref, data=file_data)

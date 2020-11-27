@@ -20,16 +20,6 @@ class IncorrectPathException(Exception):
         super().__init__(self.message)
 
 
-class RemoteFileNotFoundException(Exception):
-    """
-    Raises when there is no File Id starts with given Request Id on GoogleDrive storage
-    """
-
-    def __init__(self, file_id):
-        self.message = f"There is no file with id: {file_id}."
-        super().__init__(self.message)  # TODO: лучше организовать исключения, например нужно для gdrive принимать id, а для yadisk path
-
-
 class FileIsNotDownloadableException(Exception):
 
     def __init__(self, file):

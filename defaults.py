@@ -9,7 +9,8 @@ GDRIVE_SORT_KEYS = {
         "rev_created": "createdTime desc",
         "rev_size": "quotaBytesUsed desc",
         "rev_folder": "folder desc",
-    }
+}
+
 YADISK_SORT_KEYS = {
     "name": "name",
     "created": "created",
@@ -22,6 +23,7 @@ YADISK_SORT_KEYS = {
     "rev_size": "-size",
     "rev_path": "-path",
 }
+
 CONFIRM_CHOICE_STRING = "([y]/n) "
 ABORTED_MSG = "Aborted"
 SUCCESSFUL_DOWNLOAD_MSG = "Successfully downloaded file: `{file_name}`"
@@ -31,6 +33,13 @@ SUCCESSFUL_TRASH_MSG = "Successfully moved file: `{file_name}` to the trash"
 G_SUITE_DIRECTORY = "Directory: `{file_name}` contains G.Suite file which isn't downloadable. " \
                     "If you want to download directory and skip this file, pass '-f' flag"
 G_SUITE_FILE = "G.Suite file: `{file.name}` isn't downloadable."
-MOVE_TO_TRASH_CONFIRMATION_MSG = "Are you sure you want to move {file_name} to trash? " + CONFIRM_CHOICE_STRING
-DELETE_CONFIRMATION_MSG = "Are you sure you want to delete {file_name} file? " + CONFIRM_CHOICE_STRING
+MOVE_TO_TRASH_CONFIRMATION_MSG = "Are you sure you want to move `{file_name}` to the trash? " + CONFIRM_CHOICE_STRING
+DELETE_CONFIRMATION_MSG = "Are you sure you want to delete `{file_name}` file? " + CONFIRM_CHOICE_STRING
 LIST_NEXT_PAGE_MSG = "List next page? " + CONFIRM_CHOICE_STRING
+OVERWRITE_REQUEST_MSG = "Are you sure you want to overwrite file: `{file_name}`? " + CONFIRM_CHOICE_STRING
+OVERWRITING_DIRECTORY_MSG = "Overwriting file: `{file_name}`..."
+MAKING_DIRECTORY_MSG = "Making directory: `{file_name}`..."
+UPLOADING_DIRECTORY_MSG = "Uploading directory: `{file_name}`..."
+DOWNLOADING_FILE_MSG = "Downloading file: `{file_name}`..."
+UPLOADING_FILE_MSG = "Uploading file: `{file_name}`..."
+DOWNLOADING_DIR_AS_ZIP_MSG = "Downloading directory: `{dir_name}` as `{file_name}`..."
