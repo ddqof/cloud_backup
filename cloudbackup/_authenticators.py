@@ -27,7 +27,7 @@ class GDriveAuth:
                     "client_id": credentials["installed"]["client_id"],
                     "client_secret": credentials["installed"]["client_secret"],
                     "grant_type": "refresh_token",
-                    "refresh_token": token_data[""]
+                    "refresh_token": token_data["refresh_token"]
                 }
                 r = requests.post("https://oauth2.googleapis.com/token", data=exchange_keys)
                 token_data["access_token"] = r.json()["access_token"]
