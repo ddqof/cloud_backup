@@ -13,7 +13,6 @@ class YaDiskFile:
         self.name = meta_inf["name"]
         self.created = meta_inf["created"]
         self.modified = meta_inf["modified"]
-        self.resource_id = meta_inf["resource_id"]
         self.path = meta_inf["path"]
         self.type = meta_inf["type"]
         try:

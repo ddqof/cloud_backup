@@ -4,8 +4,8 @@ import os
 import mimetypes
 import requests
 from ._authenticators import GDriveAuth
-from ._file_objects import GDriveFile
-from .exceptions import ApiResponseException, FileIsNotDownloadableException
+from .file_objects import GDriveFile
+from .exceptions import ApiResponseException
 
 
 class GDrive:
@@ -82,7 +82,7 @@ class GDrive:
         r = requests.get("https://www.googleapis.com/drive/v3/files",
                          params=flags, headers=self._auth_headers)
         GDrive._check_status(r)
-        Page = namedtuple("Page", "files next_page_token")
+        Page = namedtuple("Page", ["files", "next_page_token"])
         r = r.json()
         if "nextPageToken" in r:
             return Page([GDriveFile(file) for file in r["files"]], r["nextPageToken"])

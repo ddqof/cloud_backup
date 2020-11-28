@@ -4,7 +4,9 @@ import sys
 from colorama import init
 from cloudbackup.gdrive import GDrive
 from cloudbackup.yadisk import YaDisk
-from cloudbackup.exceptions import IncorrectPathException, ApiResponseException
+from cloudbackup.exceptions import (IncorrectPathException,
+                                    ApiResponseException,
+                                    FileIsNotDownloadableException)
 from defaults import (SUCCESSFUL_DOWNLOAD_MSG,
                       SUCCESSFUL_UPLOAD_MSG)
 from parser import parse_args
@@ -31,10 +33,13 @@ def handle_gdrive(args):
         elif args.operation == "rm":
             wrapper.remove(file, permanently=args.permanently)
     except (ApiResponseException,
-            ValueError,
             FileExistsError,
-            FileNotFoundError) as e:
+            FileNotFoundError,
+            ValueError) as e:
         print(e)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("Interrupted by user.")
         sys.exit(1)
 
 
@@ -45,15 +50,21 @@ def handle_yadisk(args):
         if args.operation == "ls":
             wrapper.lsdir(args.remote_file, order_key=args.order_by)
         elif args.operation == "dl":
-            wrapper.download(args.remote_file, args.destination)
+            wrapper.download(args.remote_file, destination=args.destination, overwrite=args.overwrite)
         elif args.operation == "ul":
             wrapper.upload(args.local_file)
         elif args.operation == "rm":
             wrapper.remove(args.remote_file, permanently=args.permanently)
     except (ApiResponseException,
             FileNotFoundError,
-            IncorrectPathException) as e:
+            FileExistsError,
+            IncorrectPathException,
+            FileIsNotDownloadableException,
+            ValueError) as e:
         print(e)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("Interrupted by user.")
         sys.exit(1)
 
 

@@ -14,8 +14,11 @@ from defaults import (GDRIVE_SORT_KEYS,
                       MAKING_DIRECTORY_MSG,
                       DOWNLOADING_FILE_MSG,
                       UPLOADING_FILE_MSG,
-                      UPLOADING_DIRECTORY_MSG)
-from cloudbackup._file_objects import GDriveFile
+                      UPLOADING_DIRECTORY_MSG,
+                      ACCESS_DENIED_MSG,
+                      OVERWRITING_FILE_MSG,
+                      SKIP_G_SUITE_FILE_MSG)
+from cloudbackup.file_objects import GDriveFile
 from cloudbackup.gdrive import GDrive
 
 
@@ -82,11 +85,15 @@ class GDriveWrapper:
             dl_path = file.name
         else:
             dl_path = os.path.join(destination, file.name)
-        if overwrite and os.path.exists:
-            user_confirm = input(OVERWRITE_REQUEST_MSG.format(file_name=dl_path))
+        if overwrite and os.path.exists(dl_path):
+            user_confirm = input(OVERWRITE_REQUEST_MSG.format(file_name=os.path.abspath(dl_path)))
             if user_confirm not in {"y", "yes", ""}:
                 print(ABORTED_MSG)
-                return
+                raise ValueError(ACCESS_DENIED_MSG)
+            if os.path.isfile(dl_path):
+                print(OVERWRITING_FILE_MSG.format(file_name=os.path.abspath(dl_path)))
+            elif os.path.isdir(dl_path):
+                print(OVERWRITING_DIRECTORY_MSG.format(dir_name=os.path.abspath(dl_path)))
         elif os.path.exists(dl_path):
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
         if not file.mime_type.startswith("application/vnd.google-apps"):
@@ -95,21 +102,23 @@ class GDriveWrapper:
                 f.write(file_bytes)
         elif file.mime_type == "application/vnd.google-apps.folder":
             if overwrite and os.path.exists(dl_path):
-                print(OVERWRITING_DIRECTORY_MSG.format(file_name=dl_path))
                 shutil.rmtree(dl_path)
                 os.mkdir(dl_path)
             else:
-                print(MAKING_DIRECTORY_MSG.format(file_name=dl_path))
+                print(MAKING_DIRECTORY_MSG.format(dir_name=dl_path))
                 os.mkdir(dl_path)
             while True:
                 next_page_token = None
                 page = self._gdrive.lsdir(file.id, owners=['me'], page_token=next_page_token, page_size=1000)
                 for file in page.files:
-                    print(DOWNLOADING_FILE_MSG.format(file_name=os.path.join(dl_path, file.name)))
+                    if not file.mime_type.startswith("application/vnd.google-apps"):
+                        print(DOWNLOADING_FILE_MSG.format(file_name=os.path.join(dl_path, file.name)))
                     self.download(file, destination=dl_path, overwrite=overwrite)
                 next_page_token = page.next_page_token
                 if next_page_token is None:
                     break
+        else:
+            print(SKIP_G_SUITE_FILE_MSG.format(file_name=dl_path))
 
     def get_all_files(self, owners=None):
         all_files, page_token = [], None
@@ -219,7 +228,7 @@ class GDriveWrapper:
             parent_id: Optional; id of parent folder passed in `file_path`
         """
         file_size = os.path.getsize(file_path)
-        resumable_uri = self._gdrive.send_file_info(file_path, parent_id)
+        resumable_uri = self._gdrive.get_upload_link(file_path, parent_id)
         chunk_size = 256 * 1024
         uploaded_size = 0
         with open(file_path, "rb") as file:
@@ -248,5 +257,3 @@ class GDriveWrapper:
             print("".join(Fore.CYAN + default_view + Style.RESET_ALL))
         else:
             print(default_view)
-
-

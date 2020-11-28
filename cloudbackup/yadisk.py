@@ -2,9 +2,9 @@ from collections import namedtuple
 
 import requests
 from urllib.parse import parse_qs
-from ._authenticators import YaDiskAuth
-from .exceptions import ApiResponseException, IncorrectPathException
-from ._file_objects import YaDiskFile
+from cloudbackup._authenticators import YaDiskAuth
+from cloudbackup.exceptions import ApiResponseException, IncorrectPathException, FileIsNotDownloadableException
+from cloudbackup.file_objects import YaDiskFile
 
 
 class YaDisk:
@@ -18,7 +18,7 @@ class YaDisk:
             "Authorization": YaDiskAuth.authenticate()
         }
 
-    def lsdir(self, directory, sort="modified", limit=20, offset=0) -> list:
+    def lsdir(self, directory, sort="modified", limit=20, offset=0):
         """
         Make request to get directory meta-information list of limited size consists of
         inner files and directories.
@@ -45,7 +45,12 @@ class YaDisk:
                          headers=self._auth_headers)
         if r.status_code not in {200}:
             raise ApiResponseException(r.status_code, r.json()["description"])
-        return [YaDiskFile(file) for file in r.json()["_embedded"]["items"]]
+        Page = namedtuple("Page", ["dir_info", "files"])
+        json_r = r.json()
+        try:
+            return Page(YaDiskFile(json_r), [YaDiskFile(file) for file in json_r["_embedded"]["items"]])
+        except KeyError:
+            return Page(YaDiskFile(json_r), [])
 
     def list_files(self, sort="name", limit=20, offset=0) -> list:
         """
@@ -88,12 +93,12 @@ class YaDisk:
         if request_for_link.status_code not in {200}:
             raise ApiResponseException(request_for_link.status_code, request_for_link.json()["description"])
         request_for_link = request_for_link.json()
-        parsed_url = parse_qs(request_for_link["href"])  # returns queries like 'filename': ['test.zip']
+        if request_for_link["href"] == "":
+            raise FileIsNotDownloadableException(path)
         download_request = requests.get(request_for_link["href"])
         if download_request.status_code not in {200}:
             raise ApiResponseException(download_request.status_code, download_request.json()["description"])
-        File = namedtuple("File", ["name", "data"])
-        return File(parsed_url["filename"][0], download_request.content)
+        return download_request.content
 
     def _get_upload_link(self, destination) -> str:
         """
@@ -114,6 +119,7 @@ class YaDisk:
         if r.status_code not in {200}:
             raise ApiResponseException(r.status_code, r.json()["description"])
         return r.json()["href"]
+
 
     def single_upload(self, local_path, destination) -> None:
         YaDisk._check_path(destination)

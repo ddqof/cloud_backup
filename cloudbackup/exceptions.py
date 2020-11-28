@@ -23,5 +23,8 @@ class IncorrectPathException(Exception):
 class FileIsNotDownloadableException(Exception):
 
     def __init__(self, file):
-        self.message = f"G.Suite file {file.name} ({file.id})  isn't downloadable."
+        """
+        :param file: file path or file id
+        """
+        self.message = f"File: `{file}` isn't downloadable."
         super().__init__(self.message)
