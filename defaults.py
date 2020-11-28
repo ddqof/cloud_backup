@@ -24,6 +24,9 @@ YADISK_SORT_KEYS = {
     "rev_path": "-path",
 }
 
+GDRIVE_DIRECTORY_TYPE = "application/vnd.google-apps.folder"
+G_SUITE_FILES_TYPE = "application/vnd.google-apps"
+
 CONFIRM_CHOICE_STRING = "([y]/n) "
 ABORTED_MSG = "Aborted"
 SUCCESSFUL_DOWNLOAD_MSG = "Successfully downloaded file: `{file_name}`"
