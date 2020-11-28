@@ -21,13 +21,13 @@ class GDrive:
 
     def download(self, file_id) -> bytes:
         """
-        Make request for downloading file from GoogleDrive storage
+        Make request for downloading file from GoogleDrive storage.
 
         Args:
             file_id: file id to download
 
         Returns:
-            Raw bytes of downloaded file`
+            Raw bytes of downloaded file.
 
         Raises:
             ApiResponseException: an error occurred accessing API
@@ -40,24 +40,25 @@ class GDrive:
         return r.content
 
     def lsdir(self, dir_id=None, trashed=False, owners=None, page_size=20, page_token=None,
-              order_by="modifiedTime") -> namedtuple("Page", "files next_page_token"):
+              order_by="modifiedTime") -> namedtuple("Page", ["files", "next_page_token"]):
         """
         Make request to get list of `page_size` size consists of files and directories in
         directory with specified dir_id.
 
         Args:
             dir_id: If None then list all files, else list files in a directory with given id
-            trashed: Whether to list files from the trash
-            owners: List or files owners
-            page_size: Files count on one page (set value from 1 to 1000)
-            page_token: Token of the next page
-            order_by: Sort key. Valid keys are: 'createdTime', 'folder' (folders will show first in the list),
+            trashed: Optional, whether to list files from the trash
+            owners: Optional; list of files owners
+            page_size: Optional; files count on one page (set value from 1 to 1000)
+            page_token: Optional;, token of the next page
+            order_by: Optional; Sort key. Valid keys are: 'createdTime', 'folder' (folders will show first in the list),
               'modifiedTime', 'name', 'recency', 'viewedByMeTime'. Each key sorts ascending by default,
                but may be reversed with the 'desc' modifier. For example: modifiedTime desc.
 
         Returns:
-            |namedtuple| containing list of `page_size` size consists of GDriveFile objects and next page token.
-                If next page token is None, then there are no more pages.
+            |namedtuple| Page("files", "next_page_token"). `files` field contains files on this page.
+            Use 'next_page_token' for continuing a previous list request on the next page.
+            If next page token is None, then there are no more pages.
 
         Raises:
             ApiResponseException: an error occurred accessing API
@@ -95,7 +96,7 @@ class GDrive:
 
         Params:
             name: Directory name.
-            parent_id: Parent id of this folder.
+            parent_id: Optional; parent id of this folder.
 
         Returns:
             Id of created folder
@@ -115,10 +116,10 @@ class GDrive:
 
     def remove(self, file_id, permanently=False) -> None:
         """
-        Method allows to remove permanently or move file to trash.
+        Method allows to remove permanently or move file to the trash.
 
         Args:
-            file_id: id of file that should be deleted.
+            file_id: Id of file that should be deleted.
             permanently: Optional; whether to delete the file permanently or move to the trash.
 
         Raises:
@@ -145,15 +146,14 @@ class GDrive:
 
     def get_upload_link(self, file_path, parent_id=None) -> str:
         """
-        Send initial request to prepare API to receive further requests to upload
+        Send request to Google Drive API for getting link for file upload.
 
         Args:
             file_path: absolute path to file for upload
             parent_id: (optional) id of parent folder passed in `file_path`
 
         Returns:
-            A response object from `requests` library that has 'Location' header
-            that specifies the resumable session URI for upload file.
+            Link for upload.
 
         Raises:
              ApiResponseException: an error occurred accessing API
@@ -172,16 +172,34 @@ class GDrive:
         GDrive._check_status(r)
         return r.headers["location"]
 
-    def upload_entire_file(self, link, file_data):
-        r = requests.put(link, data=file_data)
+    def upload_entire_file(self, upload_link, file_data) -> None:
+        """
+        Upload full file data to the Google Drive by one single request
+        using upload link received from `get_upload_link` method.
+
+        Args:
+            upload_link: link for uploading file
+            file_data: raw binary file data
+
+        Raises:
+            ApiResponseException: If API response has unsuccessful status code.
+        """
+        r = requests.put(upload_link, data=file_data)
         GDrive._check_status(r)
 
-    def upload_chunk(self, link, file_data, uploaded_size, chunk_size, file_size):
+    def upload_chunk(self, link, file_data, uploaded_size, chunk_size, file_size) -> \
+            namedtuple("UploadStatus", ["code", "received"]):
         """
+        Upload chunk of file to the Google Drive using upload link received from
+        `get_upload_link` method.
 
         Returns:
-            |namedtuple| UploadStatus("code", "received"). If code equals 200 upload is completed, if 308 then
-            server received chunk and you can proceed uploading another chunks.
+            |namedtuple| UploadStatus("code", "received"). If code equals 200 upload is completed, if 308
+             then server received chunk and you can proceed uploading another chunks. `received` field
+             contains bytes that was received successfully by Google Drive API.
+
+        Raises:
+            ApiResponseException: If API response has unsuccessful status code.
         """
         chunk_info = {
             "Content-Length": chunk_size,

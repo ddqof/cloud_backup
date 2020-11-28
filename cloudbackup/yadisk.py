@@ -1,7 +1,5 @@
-from collections import namedtuple
-
 import requests
-from urllib.parse import parse_qs
+from collections import namedtuple
 from cloudbackup._authenticators import YaDiskAuth
 from cloudbackup.exceptions import ApiResponseException, IncorrectPathException, FileIsNotDownloadableException
 from cloudbackup.file_objects import YaDiskFile
@@ -18,25 +16,29 @@ class YaDisk:
             "Authorization": YaDiskAuth.authenticate()
         }
 
-    def lsdir(self, directory, sort="modified", limit=20, offset=0):
+    def lsdir(self, path, sort="modified", limit=20, offset=0) -> namedtuple("Page", ["dir_info", "files"]):
         """
-        Make request to get directory meta-information list of limited size consists of
-        inner files and directories.
+        Make request to get directory or file meta-information.
 
         Args:
-            directory: Directory to list. For example: "disk:/foo/photo2.png"
-            sort: Sort key. Valid keys are: 'name', 'path', 'created', 'modified', 'size'.
+            path: Directory to list. Examples: 'disk:/path/foo.py', '/path/bar'.
+            sort: Optional; Sort key. Valid keys are: 'name', 'path', 'created', 'modified', 'size'.
               To sort in reversed order add a hyphen to the parameter value: '-name'.
-            limit: The number of resources in the folder that should be described in the list.
+            limit: Optional;The number of resources in the folder that should be described in the list.
+            offset: Optional; The number of resources from the top of the list that should be skipped in the response
+             (used for paginated output).
 
         Returns:
-            List of 'limit' size consists of YaDiskFile objects represent each file and directory.
+            |namedtuple| Page("dir_info", "files"). `dir_info` field contains meta-information
+             of the file or directory itself. `files` contains list of `limit` size
+             contains files of directory. If called for file instead of directory, `files` field
+             will be empty.
 
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
         keys = {
-            "path": directory,
+            "path": path,
             "sort": sort,
             "limit": limit,
             "offset": offset,
@@ -60,9 +62,11 @@ class YaDisk:
             sort: Sort key. Valid keys are: 'name', 'path', 'created', 'modified', 'size'.
               To sort in reversed order add a hyphen to the parameter value: '-name'.
             limit: The number of resources in the folder that should be described in the list.
+            offset: The number of resources from the top of the list that should be skipped in the response
+             (used for paginated output).
 
         Returns:
-            Yields list of 'limit' size consists of YaDiskFileObjects represent each file excluding directories.
+            List of 'limit' size consists of YaDiskFileObjects represent each file excluding directories.
         """
         keys = {
             "sort": sort,
@@ -75,16 +79,20 @@ class YaDisk:
             raise ApiResponseException(r.status_code, r.json()["description"])
         return [YaDiskFile(file) for file in r.json()["items"]]
 
-    def download(self, path):
+    def download(self, path) -> bytes:
         """
-        Make a request for downloading file from YaDisk storage and
-        then writing file's data to file.
+        Make a request for downloading file from YaDisk storage.
 
         Args:
-            path: File path which need to download.
+            path: Path of the file which need to download. Examples: 'disk:/path/foo.py', '/path/bar'.
+
+        Returns:
+            Raw bytes of downloaded file.
 
         Raises:
             ApiResponseException: an error occurred accessing API.
+            FileIsNotDownloadable: an error occurred getting link for file with
+             provided `path` argument.
         """
         YaDisk._check_path(path)
         request_for_link = requests.get("https://cloud-api.yandex.net/v1/disk/resources/download",
@@ -100,12 +108,13 @@ class YaDisk:
             raise ApiResponseException(download_request.status_code, download_request.json()["description"])
         return download_request.content
 
-    def _get_upload_link(self, destination) -> str:
+    def get_upload_link(self, destination) -> str:
         """
-        Send initial request to get ref for download a file
+        Send initial request to get link for download a file.
 
         Args:
-            destination: directory on YandexDisk storage where to save uploaded file
+            destination: Directory on YandexDisk storage where to save uploaded file.
+             Examples: 'disk:/path/foo.py', '/path/bar'.
 
         Returns:
             URL for the file upload
@@ -113,6 +122,7 @@ class YaDisk:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
+        YaDisk._check_path(destination)
         r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/upload",
                          params={"path": destination},
                          headers=self._auth_headers)
@@ -120,22 +130,31 @@ class YaDisk:
             raise ApiResponseException(r.status_code, r.json()["description"])
         return r.json()["href"]
 
+    def single_upload(self, upload_link, file_data) -> None:
+        """
+        Upload a file by one single request. Before use this method call `get_upload_link`
+        and provide upload link this method.
 
-    def single_upload(self, local_path, destination) -> None:
-        YaDisk._check_path(destination)
-        upload_ref = self._get_upload_link(destination)
-        with open(local_path, "rb") as f:
-            file_data = f.read()
-        upload_request = requests.put(upload_ref, data=file_data)
+        Args:
+            upload_link: link for uploading file
+            file_data: raw binary file data
+
+        Raises:
+            ApiResponseException: an error occurred accessing API.
+        """
+        upload_request = requests.put(upload_link, data=file_data)
         if upload_request.status_code not in {201, 202}:
             raise ApiResponseException(upload_request.status_code, upload_request.json()["description"])
 
     def mkdir(self, destination) -> None:
         """
-        Create a request for making directory on YandexDisk storage.
+        Make a request for making directory on YandexDisk storage.
 
         Args:
-            destination: Path to created folder. Examples: 'disk:/path/foo.py', '/path/bar'.
+            destination: Path to folder which needs to be created. Examples: 'disk:/path/foo.py', '/path/bar'.
+
+        Raises:
+            ApiResponseException: an error occurred accessing API.
         """
         YaDisk._check_path(destination)
         path = {"path": destination}
@@ -144,7 +163,17 @@ class YaDisk:
         if r.status_code not in {201}:
             raise ApiResponseException(r.status_code, r.json()["description"])
 
-    def remove(self, path, permanently=False):
+    def remove(self, path, permanently=False) -> None:
+        """
+        Make a request for removing file on YandexDisk storage.
+
+        Args:
+            path: Path to folder which needs to be deleted. Examples: 'disk:/path/foo.py', '/path/bar'.
+            permanently: Optional; whether to delete the file permanently or move to the trash.
+
+        Raises:
+            ApiResponseException: an error occurred accessing API.
+        """
         YaDisk._check_path(path)
         flags = {
             "path": path,
@@ -163,24 +192,10 @@ class YaDisk:
         request and raise exceptions if it's wrong.
 
         Params:
-            path: path to a file on YaDisk storage
+            path: path to a file on YaDisk storage.
 
         Raises:
             IncorrectPathException: if path has prohibited chars.
         """
-        if not path.startswith("disk") and ":" in path:
+        if not path.startswith("disk:/") and ":" in path:
             raise IncorrectPathException(path)
-
-    @staticmethod
-    def _check_status(api_response) -> None:
-        """
-        This method used for checking the response status code after every API query.
-
-        Params:
-            api_response: response object from `requests` library.
-
-        Raises:
-            ApiResponseException: if API response has unsuccessful status code.
-        """
-        if api_response.status_code not in {200, 201}:
-            raise ApiResponseException(api_response.status_code, api_response.json()["description"])

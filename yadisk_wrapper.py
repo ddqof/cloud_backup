@@ -1,6 +1,5 @@
 import errno
 import os
-import shutil
 from colorama import Fore, Style
 from defaults import (YADISK_SORT_KEYS,
                       ABORTED_MSG,
@@ -24,7 +23,15 @@ class YaDiskWrapper:
     def __init__(self, yadisk: YaDisk):
         self._yadisk = yadisk
 
-    def lsdir(self, path, order_key=None):
+    def lsdir(self, path, order_key):
+        """
+        Method allows to print each file in directory using `YaDisk` class
+        from `cloudbackup.yadisk`.
+
+        Args:
+            path: path of the file which content needs to be listed.
+            order_key: attribute used to sort the list of files.
+        """
         if path == "root":
             path = "/"
         offset = 0
@@ -54,9 +61,10 @@ class YaDiskWrapper:
                 else:
                     break
 
-    def upload(self, file_abs_path, destination="/") -> None:
+    def upload(self, file_path, destination="/") -> None:
         """
-        Upload file to YandexDisk storage
+        Method allows to download file or directory using `YaDisk` class
+        from `cloudbackup.yadisk`.
 
         Args:
             file_abs_path: absolute path of file.
@@ -65,8 +73,9 @@ class YaDiskWrapper:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
+        file_abs_path = os.path.abspath(file_path)
         if os.path.isfile(file_abs_path):
-            self._yadisk.single_upload(file_abs_path, destination)
+            self._put_file(file_abs_path, f"{destination}{os.path.split(file_abs_path)[1]}")
         elif os.path.isdir(file_abs_path):
             if file_abs_path.endswith(os.path.sep):
                 file_abs_path = file_abs_path[:-1]
@@ -74,16 +83,22 @@ class YaDiskWrapper:
             head = os.path.split(file_abs_path)[0]
             for root, dirs, filenames in tree:
                 destination = root.split(head)[1]
-                print(UPLOADING_DIRECTORY_MSG.format(file_name=destination))
+                print(UPLOADING_DIRECTORY_MSG.format(dir_name=destination))
                 self._yadisk.mkdir(destination)
                 if not filenames:
                     continue
-                for file in filenames:
-                    ul_path = os.path.join(root, file)
-                    print(UPLOADING_FILE_MSG.format(file_name=ul_path))
-                    self._yadisk.single_upload(ul_path, f"{destination}/{file}")
+                for filename in filenames:
+                    current_ul_path = os.path.join(root, filename)
+                    self._put_file(current_ul_path, f"{destination}/{filename}")
         else:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_abs_path)
+
+    def _put_file(self, local_path, destination):
+        print(UPLOADING_FILE_MSG.format(file_name=local_path))
+        upload_link = self._yadisk.get_upload_link(destination)
+        with open(local_path, "rb") as f:
+            file_data = f.read()
+        self._yadisk.single_upload(upload_link, file_data)
 
     def remove(self, path, permanently=False):
         if permanently:
@@ -128,7 +143,7 @@ class YaDiskWrapper:
             user_confirm = input(OVERWRITE_REQUEST_MSG.format(file_name=os.path.abspath(dl_path)))
             if user_confirm not in {"y", "yes", ""}:
                 print(ABORTED_MSG)
-                raise ValueError(ACCESS_DENIED_MSG)
+                raise PermissionError(ACCESS_DENIED_MSG)
             #  only files are downloadable from yadisk
             print(OVERWRITING_FILE_MSG.format(file_name=os.path.abspath(dl_path)))
         elif os.path.exists(dl_path):
