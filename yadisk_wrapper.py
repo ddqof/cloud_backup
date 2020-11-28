@@ -118,7 +118,7 @@ class YaDiskWrapper:
             if not destination.endswith(os.path.sep):
                 destination += os.path.sep
             dl_path = os.path.join(destination, path_chunks[-1])
-
+        dl_path = os.path.abspath(dl_path)
         if remote_file_object.type == "dir":
             print(DOWNLOADING_DIR_AS_ZIP_MSG.format(dir_name=path, file_name=dl_path))
         elif remote_file_object.type == "file":

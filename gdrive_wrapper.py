@@ -87,15 +87,16 @@ class GDriveWrapper:
             dl_path = file.name
         else:
             dl_path = os.path.join(destination, file.name)
+        dl_path = os.path.abspath(dl_path)
         if overwrite and os.path.exists(dl_path):
-            user_confirm = input(OVERWRITE_REQUEST_MSG.format(file_name=os.path.abspath(dl_path)))
+            user_confirm = input(OVERWRITE_REQUEST_MSG.format(file_name=dl_path))
             if user_confirm not in {"y", "yes", ""}:
                 print(ABORTED_MSG)
                 raise ValueError(ACCESS_DENIED_MSG)
             if os.path.isfile(dl_path):
-                print(OVERWRITING_FILE_MSG.format(file_name=os.path.abspath(dl_path)))
+                print(OVERWRITING_FILE_MSG.format(file_name=dl_path))
             elif os.path.isdir(dl_path):
-                print(OVERWRITING_DIRECTORY_MSG.format(dir_name=os.path.abspath(dl_path)))
+                print(OVERWRITING_DIRECTORY_MSG.format(dir_name=dl_path))
         elif os.path.exists(dl_path):
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
         if not file.mime_type.startswith(G_SUITE_FILES_TYPE):
