@@ -16,7 +16,7 @@ class YaDisk:
             "Authorization": YaDiskAuth.authenticate()
         }
 
-    def lsdir(self, path, sort="modified", limit=20, offset=0) -> namedtuple("Page", ["dir_info", "files"]):
+    def lsdir(self, path, sort="modified", limit=20, offset=0) -> namedtuple("Page", ["file_info", "files"]):
         """
         Make request to get directory or file meta-information.
 
@@ -47,7 +47,7 @@ class YaDisk:
                          headers=self._auth_headers)
         if r.status_code not in {200}:
             raise ApiResponseException(r.status_code, r.json()["description"])
-        Page = namedtuple("Page", ["dir_info", "files"])
+        Page = namedtuple("Page", ["file_info", "files"])
         json_r = r.json()
         try:
             return Page(YaDiskFile(json_r), [YaDiskFile(file) for file in json_r["_embedded"]["items"]])

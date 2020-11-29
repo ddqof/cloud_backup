@@ -1,20 +1,26 @@
 import errno
 import os
 from colorama import Fore, Style
-from defaults import (YADISK_SORT_KEYS,
-                      ABORTED_MSG,
-                      SUCCESSFUL_DELETE_MSG,
-                      SUCCESSFUL_TRASH_MSG,
-                      MOVE_TO_TRASH_CONFIRMATION_MSG,
-                      DELETE_CONFIRMATION_MSG,
-                      LIST_NEXT_PAGE_MSG,
-                      OVERWRITE_REQUEST_MSG,
-                      ACCESS_DENIED_MSG,
-                      DOWNLOADING_FILE_MSG,
-                      UPLOADING_FILE_MSG,
-                      UPLOADING_DIRECTORY_MSG,
-                      SUCCESSFUL_DOWNLOAD_MSG,
-                      DOWNLOADING_DIR_AS_ZIP_MSG, OVERWRITING_FILE_MSG)
+from defaults import (
+    YADISK_SORT_KEYS,
+    ABORTED_MSG,
+    SUCCESSFUL_DELETE_FILE_MSG,
+    SUCCESSFUL_FILE_TRASH_MSG,
+    MOVE_TO_TRASH_CONFIRMATION_MSG,
+    DELETE_CONFIRMATION_MSG,
+    LIST_NEXT_PAGE_MSG,
+    OVERWRITE_REQUEST_MSG,
+    ACCESS_DENIED_MSG,
+    DOWNLOADING_FILE_MSG,
+    UPLOADING_FILE_MSG,
+    UPLOADING_DIRECTORY_MSG,
+    SUCCESSFUL_DOWNLOAD_FILE_MSG,
+    DOWNLOADING_DIR_AS_ZIP_MSG,
+    OVERWRITING_FILE_MSG,
+    SUCCESSFUL_DELETE_DIR_MSG,
+    SUCCESSFUL_DIR_TRASH_MSG,
+    UNEXPECTED_VALUE_MSG
+)
 from cloudbackup.yadisk import YaDisk
 
 
@@ -23,7 +29,7 @@ class YaDiskWrapper:
     def __init__(self, yadisk: YaDisk):
         self._yadisk = yadisk
 
-    def lsdir(self, path, order_key):
+    def lsdir(self, path, order_key) -> None:
         """
         Method allows to print each file in directory using `YaDisk` class
         from `cloudbackup.yadisk`.
@@ -93,30 +99,41 @@ class YaDiskWrapper:
         else:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_abs_path)
 
-    def _put_file(self, local_path, destination):
+    def _put_file(self, local_path, destination) -> None:
         print(UPLOADING_FILE_MSG.format(file_name=local_path))
         upload_link = self._yadisk.get_upload_link(destination)
         with open(local_path, "rb") as f:
             file_data = f.read()
         self._yadisk.single_upload(upload_link, file_data)
 
-    def remove(self, path, permanently=False):
+    def remove(self, path, permanently=False) -> None:
+        remote_file = self._yadisk.lsdir(path).file_info
         if permanently:
-            user_confirm = input(DELETE_CONFIRMATION_MSG.format(file_name=path.name))
+            user_confirm = input(DELETE_CONFIRMATION_MSG.format(file_name=path))
             if user_confirm in {"y", "yes", ""}:
                 self._yadisk.remove(path, permanently=True)
-                print(SUCCESSFUL_DELETE_MSG.format(file_name=path))
+                if remote_file.type == "file":
+                    print(SUCCESSFUL_DELETE_FILE_MSG.format(file_name=path))
+                elif remote_file.type == "dir":
+                    print(SUCCESSFUL_DELETE_DIR_MSG.format(dir_name=path))
+                else:
+                    raise ValueError(UNEXPECTED_VALUE_MSG.format(var_name=remote_file))
             else:
                 print(ABORTED_MSG)
         else:
             user_confirm = input(MOVE_TO_TRASH_CONFIRMATION_MSG.format(file_name=path))
             if user_confirm in {"y", "yes", ""}:
                 self._yadisk.remove(path)
-                print(SUCCESSFUL_TRASH_MSG.format(file_name=path))
+                if remote_file.type == "file":
+                    print(SUCCESSFUL_FILE_TRASH_MSG.format(file_name=path))
+                elif remote_file.type == "dir":
+                    print(SUCCESSFUL_DIR_TRASH_MSG.format(dir_name=path))
+                else:
+                    raise ValueError(UNEXPECTED_VALUE_MSG.format(var_name=remote_file))
             else:
                 print(ABORTED_MSG)
 
-    def download(self, path, destination=None, overwrite=False):
+    def download(self, path, destination=None, overwrite=False) -> None:
         #  rebuild path for platform independence
         if path.startswith("disk:/"):
             path_chunks = path[5:].split("/")
@@ -124,7 +141,7 @@ class YaDiskWrapper:
             path_chunks = path.split("/")
 
         #  check if directory downloadable only as zip
-        remote_file_object = self._yadisk.lsdir(path).dir_info
+        remote_file_object = self._yadisk.lsdir(path).file_info
         if remote_file_object.type == "dir":
             path_chunks[-1] = remote_file_object.name + ".zip"
         if destination is None:
@@ -138,6 +155,8 @@ class YaDiskWrapper:
             print(DOWNLOADING_DIR_AS_ZIP_MSG.format(dir_name=path, file_name=dl_path))
         elif remote_file_object.type == "file":
             print(DOWNLOADING_FILE_MSG.format(file_name=dl_path))
+        else:
+            raise ValueError(UNEXPECTED_VALUE_MSG.format(var_name=remote_file_object))
 
         if overwrite and os.path.exists(dl_path):
             user_confirm = input(OVERWRITE_REQUEST_MSG.format(file_name=os.path.abspath(dl_path)))
@@ -146,16 +165,16 @@ class YaDiskWrapper:
                 raise PermissionError(ACCESS_DENIED_MSG)
             #  only files are downloadable from yadisk
             print(OVERWRITING_FILE_MSG.format(file_name=os.path.abspath(dl_path)))
-        elif os.path.exists(dl_path):
+        if not overwrite and os.path.exists(dl_path):
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
 
         file_content = self._yadisk.download(path)
         with open(dl_path, "wb+") as f:
             f.write(file_content)
-            print(SUCCESSFUL_DOWNLOAD_MSG.format(file_name=path_chunks[-1]))
+            print(SUCCESSFUL_DOWNLOAD_FILE_MSG.format(file_name=path_chunks[-1]))
 
     @staticmethod
-    def print(file):
+    def print(file) -> None:
         default_view = file.name + " " + f"({file.path})"
         if file.type == "dir":
             print("".join(Fore.CYAN + default_view + Style.RESET_ALL))

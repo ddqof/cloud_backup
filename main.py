@@ -8,9 +8,11 @@ from cloudbackup.yadisk import YaDisk
 from cloudbackup.exceptions import (IncorrectPathException,
                                     ApiResponseException,
                                     FileIsNotDownloadableException)
-from defaults import (SUCCESSFUL_DOWNLOAD_MSG,
+from defaults import (SUCCESSFUL_DOWNLOAD_FILE_MSG,
                       SUCCESSFUL_UPLOAD_FILE_MSG,
-                      SUCCESSFUL_UPLOAD_DIR_MSG)
+                      SUCCESSFUL_UPLOAD_DIR_MSG,
+                      GDRIVE_DIRECTORY_TYPE,
+                      SUCCESSFUL_DOWNLOAD_DIR_MSG)
 from parser import parse_args
 from gdrive_wrapper import GDriveWrapper
 from yadisk_wrapper import YaDiskWrapper
@@ -28,7 +30,10 @@ def handle_gdrive(args):
             wrapper.lsdir(file, args.order_by)
         elif args.operation == "dl":
             wrapper.download(file, destination=args.destination, overwrite=args.overwrite)
-            print(SUCCESSFUL_DOWNLOAD_MSG.format(file_name=file.name))
+            if file.mime_type != GDRIVE_DIRECTORY_TYPE:
+                print(SUCCESSFUL_DOWNLOAD_FILE_MSG.format(file_name=file.name))
+            else:
+                print(SUCCESSFUL_DOWNLOAD_DIR_MSG.format(dir_name=file.name))
         elif args.operation == "ul":
             wrapper.upload(args.local_file)
             print_successful_upload_msg(args.local_file)
@@ -37,7 +42,7 @@ def handle_gdrive(args):
     except (ApiResponseException,
             FileExistsError,
             FileNotFoundError,
-            ValueError) as e:
+            PermissionError) as e:
         print(e)
         sys.exit(1)
     except KeyboardInterrupt:

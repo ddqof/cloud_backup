@@ -2,24 +2,26 @@ import errno
 import os
 import shutil
 from colorama import Fore, Style
-from defaults import (GDRIVE_SORT_KEYS,
-                      ABORTED_MSG,
-                      SUCCESSFUL_DELETE_MSG,
-                      SUCCESSFUL_TRASH_MSG,
-                      MOVE_TO_TRASH_CONFIRMATION_MSG,
-                      DELETE_CONFIRMATION_MSG,
-                      LIST_NEXT_PAGE_MSG,
-                      OVERWRITING_DIRECTORY_MSG,
-                      OVERWRITE_REQUEST_MSG,
-                      MAKING_DIRECTORY_MSG,
-                      DOWNLOADING_FILE_MSG,
-                      UPLOADING_FILE_MSG,
-                      UPLOADING_DIRECTORY_MSG,
-                      ACCESS_DENIED_MSG,
-                      OVERWRITING_FILE_MSG,
-                      SKIP_G_SUITE_FILE_MSG,
-                      G_SUITE_FILES_TYPE,
-                      GDRIVE_DIRECTORY_TYPE)
+from defaults import (
+    GDRIVE_SORT_KEYS,
+    ABORTED_MSG,
+    SUCCESSFUL_DELETE_FILE_MSG,
+    SUCCESSFUL_FILE_TRASH_MSG,
+    MOVE_TO_TRASH_CONFIRMATION_MSG,
+    DELETE_CONFIRMATION_MSG,
+    LIST_NEXT_PAGE_MSG,
+    OVERWRITING_DIRECTORY_MSG,
+    OVERWRITE_REQUEST_MSG,
+    MAKING_DIRECTORY_MSG,
+    DOWNLOADING_FILE_MSG,
+    UPLOADING_FILE_MSG,
+    UPLOADING_DIRECTORY_MSG,
+    ACCESS_DENIED_MSG,
+    OVERWRITING_FILE_MSG,
+    SKIP_G_SUITE_FILE_MSG,
+    G_SUITE_FILES_TYPE,
+    GDRIVE_DIRECTORY_TYPE
+)
 from cloudbackup.file_objects import GDriveFile
 from cloudbackup.gdrive import GDrive
 
@@ -70,7 +72,7 @@ class GDriveWrapper:
         from `cloudbackup.gdrive`.
 
         Args:
-            file: GDriveFileObject to download.
+            file: GDriveFileObject to remove.
             permanently: Optional; whether to delete the file permanently or move to the trash.
 
         Raises:
@@ -80,7 +82,7 @@ class GDriveWrapper:
             user_confirm = input(DELETE_CONFIRMATION_MSG.format(file_name=file.name))
             if user_confirm in {"y", "yes", ""}:
                 self._gdrive.remove(file.id, permanently=True)
-                print(SUCCESSFUL_DELETE_MSG.format(file_name=file.name))
+                print(SUCCESSFUL_DELETE_FILE_MSG.format(file_name=file.name))
 
             else:
                 print(ABORTED_MSG)
@@ -88,7 +90,7 @@ class GDriveWrapper:
             user_confirm = input(MOVE_TO_TRASH_CONFIRMATION_MSG.format(file_name=file.name))
             if user_confirm in {"y", "yes", ""}:
                 self._gdrive.remove(file.id)
-                print(SUCCESSFUL_TRASH_MSG.format(file_name=file.name))
+                print(SUCCESSFUL_FILE_TRASH_MSG.format(file_name=file.name))
             else:
                 print(ABORTED_MSG)
 
@@ -116,12 +118,12 @@ class GDriveWrapper:
             user_confirm = input(OVERWRITE_REQUEST_MSG.format(file_name=dl_path))
             if user_confirm not in {"y", "yes", ""}:
                 print(ABORTED_MSG)
-                raise ValueError(ACCESS_DENIED_MSG)
+                raise PermissionError(ACCESS_DENIED_MSG)
             if os.path.isfile(dl_path):
                 print(OVERWRITING_FILE_MSG.format(file_name=dl_path))
             elif os.path.isdir(dl_path):
                 print(OVERWRITING_DIRECTORY_MSG.format(dir_name=dl_path))
-        elif os.path.exists(dl_path):
+        if not overwrite and os.path.exists(dl_path):
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
         if not file.mime_type.startswith(G_SUITE_FILES_TYPE):
             file_bytes = self._gdrive.download(file.id)
@@ -178,8 +180,6 @@ class GDriveWrapper:
         Returns:
              GDriveFileObject that has id starts with given start_id
         """
-        if start_id is None:
-            raise ValueError("Id mustn't be a None")
         if start_id == "root":
             return GDriveFile({"name": "root", "id": "root", "mimeType": "application/vnd.google-apps.folder"})
         found = []
@@ -187,7 +187,7 @@ class GDriveWrapper:
             if file.id.startswith(start_id):
                 found.append(file)
                 if len(found) > 1:
-                    raise ValueError("Please enter more symbols to determine File ID.")
+                    raise FileNotFoundError("Please enter more symbols to determine File ID.")
         if len(found) == 1:
             return found[0]
         else:
