@@ -50,6 +50,12 @@ class GDriveFile:
         self.id = meta_inf["id"]
         self.name = meta_inf["name"]
         self.mime_type = meta_inf["mimeType"]
+        if self.mime_type == "application/vnd.google-apps.folder":
+            self.type = "dir"
+        elif self.mime_type.startswith("application/vnd.google-apps"):
+            self.type = "g.suite"
+        else:
+            self.type = "file"
 
     def __str__(self):
         return f"GDriveFileObject: {self.name}"

@@ -26,7 +26,7 @@ class GDriveWrapper:
     def __init__(self, gdrive: GDrive):
         self._gdrive = gdrive
 
-    def lsdir(self, file, order_key) -> None:
+    def lsdir(self, start_id, order_key) -> None:
         """
         Method allows to print each file in directory using `GDrive` class
         from `cloudbackup.gdrive`.
@@ -35,6 +35,7 @@ class GDriveWrapper:
             file: `GDriveFileObject` which content needs to be listed.
             order_key: attribute used to sort the list of files.
         """
+        file = self.get_file_object_by_id(start_id)
         if file is None:
             files = self.get_all_files(owners=['me'])
             for file in files:
@@ -44,11 +45,11 @@ class GDriveWrapper:
                     file_id=file.id,
                     file_type=file.mime_type)
         else:
-            if file.mime_type != GDRIVE_DIRECTORY_TYPE:
+            if file.type != "dir":
                 common_operations.print_remote_file(
                     file_name=file.name,
                     file_id=file.id,
-                    file_type=file.mime_type)
+                    file_type=file.type)
             else:
                 while True:
                     page = self._gdrive.lsdir(dir_id=file.id,
@@ -70,7 +71,7 @@ class GDriveWrapper:
                     else:
                         break
 
-    def remove(self, file, permanently=False) -> None:
+    def remove(self, start_id, permanently=False) -> None:
         """
         Method allows to remove file or directory using `GDrive` class
         from `cloudbackup.gdrive`.
@@ -82,14 +83,15 @@ class GDriveWrapper:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
+        file = self.get_file_object_by_id(start_id)
         common_operations.remove(
             storage=self._gdrive,
             file_name=file.name,
             destination=file.id,
-            file_type=file.mime_type,
+            file_type=file.type,
             permanently=permanently)
 
-    def download(self, file, destination=None, overwrite=False) -> None:
+    def download(self, start_id, destination=None, overwrite=False) -> None:
         """
         Method allows to download file or directory using `GDrive` class
         from `cloudbackup.gdrive`. Skips G.Suite files.
@@ -104,6 +106,7 @@ class GDriveWrapper:
             ValueError: if user denied access to overwrite file or directory
             FileExistsError: if file exists but overwrite key wasn't given
         """
+        file = self.get_file_object_by_id(start_id)
         if destination is None:
             dl_path = file.name
         else:
@@ -112,11 +115,11 @@ class GDriveWrapper:
             common_operations.print_overwrite_dialog(dl_path)
         if not overwrite and os.path.exists(dl_path):
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
-        if not file.mime_type.startswith(G_SUITE_FILES_TYPE):
+        if not file.type == "file":
             file_bytes = self._gdrive.download(file.id)
             with open(dl_path, "wb+") as f:
                 f.write(file_bytes)
-        elif file.mime_type == GDRIVE_DIRECTORY_TYPE:
+        elif file.type == "dir":
             if overwrite and os.path.exists(dl_path):
                 shutil.rmtree(dl_path)
                 os.mkdir(dl_path)

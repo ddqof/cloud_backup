@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import common_operations
 import sys
 import os
 from colorama import init
@@ -10,46 +11,11 @@ from defaults import (SUCCESSFUL_DOWNLOAD_FILE_MSG,
                       SUCCESSFUL_UPLOAD_FILE_MSG,
                       SUCCESSFUL_UPLOAD_DIR_MSG,
                       GDRIVE_DIRECTORY_TYPE,
-                      SUCCESSFUL_DOWNLOAD_DIR_MSG)
+                      SUCCESSFUL_DOWNLOAD_DIR_MSG,
+                      UNEXPECTED_VALUE_MSG)
 from parser import parse_args
 from gdrive_wrapper import GDriveWrapper
 from yadisk_wrapper import YaDiskWrapper
-
-
-def handle_gdrive(args):
-    gdrive = GDrive()
-    wrapper = GDriveWrapper(gdrive)
-    if hasattr(args, "remote_file") and args.remote_file is not None:
-        file = wrapper.get_file_object_by_id(args.remote_file)
-    else:
-        file = None
-    if args.operation == "ls":
-        wrapper.lsdir(file, args.order_by)
-    elif args.operation == "dl":
-        wrapper.download(file, destination=args.destination, overwrite=args.overwrite)
-        if file.mime_type != GDRIVE_DIRECTORY_TYPE:
-            print(SUCCESSFUL_DOWNLOAD_FILE_MSG.format(file_name=file.name))
-        else:
-            print(SUCCESSFUL_DOWNLOAD_DIR_MSG.format(dir_name=file.name))
-    elif args.operation == "ul":
-        wrapper.upload(args.local_file)
-        print_successful_upload_msg(args.local_file)
-    elif args.operation == "rm":
-        wrapper.remove(file, permanently=args.permanently)
-
-
-def handle_yadisk(args):
-    yadisk = YaDisk()
-    wrapper = YaDiskWrapper(yadisk)
-    if args.operation == "ls":
-        wrapper.lsdir(args.remote_file, order_key=args.order_by)
-    elif args.operation == "dl":
-        wrapper.download(args.remote_file, destination=args.destination, overwrite=args.overwrite)
-    elif args.operation == "ul":
-        wrapper.upload(args.local_file)
-        print_successful_upload_msg(args.local_file)
-    elif args.operation == "rm":
-        wrapper.remove(args.remote_file, permanently=args.permanently)
 
 
 def print_successful_upload_msg(file_path):
@@ -62,11 +28,38 @@ def print_successful_upload_msg(file_path):
 def main():
     init()
     args = parse_args()
+    if args.storage == "gdrive":
+        storage = GDrive()
+        wrapper = GDriveWrapper(storage)
+        if args.operation in {"ls", "dl", "rm"} and args.remote_file:
+            remote_file = common_operations.get_file_object_by_id(storage, args.remote_file)
+    elif args.storage == "yadisk":
+        storage = YaDisk()
+        wrapper = YaDiskWrapper(storage)
+        remote_file = storage.lsdir(args.remote_file).file_info
+    else:
+        error_msg = common_operations.get_unexpected_value_msg(args.storage)
+        raise ValueError(error_msg)
+
     try:
-        if args.storage == "gdrive":
-            handle_gdrive(args)
-        elif args.storage == "yadisk":
-            handle_yadisk(args)
+        if args.operation == "ls":
+            wrapper.lsdir(args.remote_file, order_key=args.order_by)
+        elif args.operation == "dl":
+            common_operations.download(storage,
+                                       remote_destination=remote_file.path,
+                                       file_name=remote_file.name,
+                                       file_type=remote_file.type,
+                                       local_destination=args.destination,
+                                       overwrite=args.overwrite)
+            if remote_file.type == "dir":
+                exit_msg = SUCCESSFUL_DOWNLOAD_DIR_MSG.format(dir_name=remote_file.name)
+            elif remote_file == "file":
+                exit_msg = SUCCESSFUL_DOWNLOAD_FILE_MSG.format(file_name=remote_file.name)
+            print(exit_msg)
+        elif args.operation == "ul":
+            wrapper.upload(args.local_file)
+        elif args.operation == "rm":
+            wrapper.remove(args.remote_file, permanently=args.permanently)
     except (ApiResponseException,
             FileExistsError,
             FileNotFoundError,

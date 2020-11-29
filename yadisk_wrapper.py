@@ -116,7 +116,6 @@ class YaDiskWrapper:
             path_chunks = path[5:].split("/")
         else:
             path_chunks = path.split("/")
-
         #  check if directory downloadable only as zip
         remote_file_object = self._yadisk.lsdir(path).file_info
         if remote_file_object.type == "dir":
