@@ -2,27 +2,15 @@ import errno
 import os
 from defaults import (
     YADISK_SORT_KEYS,
-    ABORTED_MSG,
-    SUCCESSFUL_DELETE_FILE_MSG,
-    SUCCESSFUL_FILE_TRASH_MSG,
-    MOVE_FILE_TO_TRASH_CONFIRMATION_MSG,
-    DELETE_DIR_CONFIRMATION_MSG,
     LIST_NEXT_PAGE_MSG,
     DOWNLOADING_FILE_MSG,
     UPLOADING_DIRECTORY_MSG,
     SUCCESSFUL_DOWNLOAD_FILE_MSG,
     DOWNLOADING_DIR_AS_ZIP_MSG,
-    SUCCESSFUL_DELETE_DIR_MSG,
-    SUCCESSFUL_DIR_TRASH_MSG,
     UNEXPECTED_VALUE_MSG
 )
 from cloudbackup.yadisk import YaDisk
-from common_operations import (
-    check_overwriting,
-    put_file,
-    print_remote_file,
-    remove
-)
+import common_operations
 
 
 class YaDiskWrapper:
@@ -30,11 +18,7 @@ class YaDiskWrapper:
     def __init__(self, yadisk: YaDisk):
         self._yadisk = yadisk
 
-    def lsdir(
-            self,
-            path,
-            order_key
-    ) -> None:
+    def lsdir(self, path, order_key) -> None:
         """
         Method allows to print each file in directory using `YaDisk` class
         from `cloudbackup.yadisk`.
@@ -58,18 +42,18 @@ class YaDiskWrapper:
                 else:
                     break
             for file in all_files:
-                print_remote_file(file_name=file.name,
-                                  file_id=file.path,
-                                  file_type=file.type)
+                common_operations.print_remote_file(file_name=file.name,
+                                                    file_id=file.path,
+                                                    file_type=file.type)
         else:
             page = self._yadisk.lsdir(path,
                                       offset=offset,
                                       sort=YADISK_SORT_KEYS[order_key])
             while True:
                 for file in page.files:
-                    print_remote_file(file_name=file.name,
-                                      file_id=file.path,
-                                      file_type=file.type)
+                    common_operations.print_remote_file(file_name=file.name,
+                                                        file_id=file.path,
+                                                        file_type=file.type)
                 offset += 20
                 page = self._yadisk.lsdir(path,
                                           offset=offset,
@@ -82,11 +66,7 @@ class YaDiskWrapper:
                 else:
                     break
 
-    def upload(
-            self,
-            file_path,
-            destination="/"
-    ) -> None:
+    def upload(self, file_path, destination="/") -> None:
         """
         Method allows to download file or directory using `YaDisk` class
         from `cloudbackup.yadisk`.
@@ -98,14 +78,16 @@ class YaDiskWrapper:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        file_abs_path = os.path.abspath(file_path)
-        if os.path.isfile(file_abs_path):
-            self._put_file(file_abs_path, f"{destination}{os.path.split(file_abs_path)[1]}")
-        elif os.path.isdir(file_abs_path):
-            if file_abs_path.endswith(os.path.sep):
-                file_abs_path = file_abs_path[:-1]
-            tree = os.walk(file_abs_path)
-            head = os.path.split(file_abs_path)[0]
+        if os.path.isfile(file_path):
+            common_operations.put_file(
+                storage=self._yadisk,
+                local_path=file_path,
+                destination=f"{destination}{os.path.split(file_path)[1]}")
+        elif os.path.isdir(file_path):
+            if file_path.endswith(os.path.sep):
+                file_path = file_path[:-1]
+            tree = os.walk(file_path)
+            head = os.path.split(file_path)[0]
             for root, dirs, filenames in tree:
                 destination = root.split(head)[1]
                 print(UPLOADING_DIRECTORY_MSG.format(dir_name=destination))
@@ -114,28 +96,21 @@ class YaDiskWrapper:
                     continue
                 for filename in filenames:
                     current_ul_path = os.path.join(root, filename)
-                    put_file(self._yadisk, current_ul_path, f"{destination}/{filename}")
+                    common_operations.put_file(storage=self._yadisk,
+                                               local_path=current_ul_path,
+                                               destination=f"{destination}/{filename}")
         else:
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_abs_path)
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_path)
 
-    def remove(
-            self,
-            path,
-            permanently=False
-    ) -> None:
+    def remove(self, path, permanently=False) -> None:
         remote_file = self._yadisk.lsdir(path).file_info
-        remove(storage=self._yadisk,
-               file_name=remote_file.name,
-               destination=path,
-               file_type=remote_file.type,
-               permanently=permanently)
+        common_operations.remove(storage=self._yadisk,
+                                 file_name=remote_file.name,
+                                 destination=path,
+                                 file_type=remote_file.type,
+                                 permanently=permanently)
 
-    def download(
-            self,
-            path,
-            destination=None,
-            overwrite=False
-    ) -> None:
+    def download(self, path, destination=None, overwrite=False) -> None:
         #  rebuild path for platform independence
         if path.startswith("disk:/"):
             path_chunks = path[5:].split("/")
@@ -159,7 +134,10 @@ class YaDiskWrapper:
             print(DOWNLOADING_FILE_MSG.format(file_name=dl_path))
         else:
             raise ValueError(UNEXPECTED_VALUE_MSG.format(var_name=remote_file_object))
-        check_overwriting(overwrite, path)
+        if overwrite and os.path.exists(path):
+            common_operations.print_overwrite_dialog(path)
+        else:
+            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
         file_content = self._yadisk.download(path)
         with open(dl_path, "wb+") as f:
             f.write(file_content)

@@ -15,26 +15,27 @@ from defaults import (
     MOVE_FILE_TO_TRASH_CONFIRMATION_MSG,
     SUCCESSFUL_FILE_TRASH_MSG,
     DELETE_FILE_CONFIRMATION_MSG,
-    SUCCESSFUL_DELETE_DIR_MSG, MOVE_DIR_TO_TRASH_CONFIRMATION_MSG, SUCCESSFUL_DIR_TRASH_MSG
+    SUCCESSFUL_DELETE_DIR_MSG,
+    MOVE_DIR_TO_TRASH_CONFIRMATION_MSG,
+    SUCCESSFUL_DIR_TRASH_MSG
 )
 from cloudbackup.gdrive import GDrive
 from cloudbackup.yadisk import YaDisk
 
 
-def check_overwriting(overwrite_flag, path) -> None:
-    if overwrite_flag and os.path.exists(path):
-        user_confirm = input(OVERWRITE_REQUEST_MSG.format(file_name=path))
-        if user_confirm not in {"y", "yes", ""}:
-            print(ABORTED_MSG)
-            raise PermissionError(ACCESS_DENIED_MSG)
-        if os.path.isfile(path):
-            print(OVERWRITING_FILE_MSG.format(file_name=path))
-        elif os.path.isdir(path):
-            print(OVERWRITING_DIRECTORY_MSG.format(dir_name=path))
-    if not overwrite_flag and os.path.exists(path):
-        raise FileExistsError(errno.EEXIST,
-                              os.strerror(errno.EEXIST),
-                              path)
+def print_overwrite_dialog(path) -> None:
+    overwrite_confirm = OVERWRITE_REQUEST_MSG.format(file_name=path)
+    if os.path.isfile(path):
+        exit_msg = OVERWRITING_FILE_MSG.format(file_name=path)
+    elif os.path.isdir(path):
+        exit_msg = OVERWRITING_DIRECTORY_MSG.format(dir_name=path)
+    else:
+        raise ValueError(UNEXPECTED_VALUE_MSG.format(var_name=path))
+    user_confirm = input(overwrite_confirm)
+    if user_confirm in {"y", "yes", ""}:
+        print(exit_msg)
+    else:
+        raise PermissionError(ACCESS_DENIED_MSG)
 
 
 def remove(
@@ -84,11 +85,7 @@ def remove(
         raise ValueError(UNEXPECTED_VALUE_MSG.format(var_name=storage))
 
 
-def put_file(
-        storage: GDrive or YaDisk,
-        local_path,
-        destination=None
-) -> None:
+def put_file(storage: GDrive or YaDisk, local_path, destination=None) -> None:
     """
     Getting link for upload file and then uploading file raw binary data
     to this link.
@@ -117,11 +114,7 @@ def put_file(
     storage.upload_entire_file(link, file_data)
 
 
-def print_remote_file(
-        file_name,
-        file_id,
-        file_type
-) -> None:
+def print_remote_file(file_name, file_id, file_type) -> None:
     """
     Colorized print of file on remote storage. Directories print in cyan color.
     Files' color doesn't change.

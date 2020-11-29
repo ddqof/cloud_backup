@@ -1,13 +1,11 @@
 import errno
 import os
 import shutil
+
+import common_operations
 from defaults import (
     GDRIVE_SORT_KEYS,
     ABORTED_MSG,
-    SUCCESSFUL_DELETE_FILE_MSG,
-    SUCCESSFUL_FILE_TRASH_MSG,
-    MOVE_FILE_TO_TRASH_CONFIRMATION_MSG,
-    DELETE_DIR_CONFIRMATION_MSG,
     LIST_NEXT_PAGE_MSG,
     MAKING_DIRECTORY_MSG,
     DOWNLOADING_FILE_MSG,
@@ -18,12 +16,6 @@ from defaults import (
 )
 from cloudbackup.file_objects import GDriveFile
 from cloudbackup.gdrive import GDrive
-from common_operations import (
-    check_overwriting,
-    put_file,
-    print_remote_file,
-    remove
-)
 
 
 class GDriveWrapper:
@@ -47,18 +39,16 @@ class GDriveWrapper:
             files = self.get_all_files(owners=['me'])
             for file in files:
                 #  last argument shows whether file is directory or not
-                print_remote_file(
+                common_operations.print_remote_file(
                     file_name=file.name,
                     file_id=file.id,
-                    file_type=file.mime_type
-                )
+                    file_type=file.mime_type)
         else:
             if file.mime_type != GDRIVE_DIRECTORY_TYPE:
-                print_remote_file(
+                common_operations.print_remote_file(
                     file_name=file.name,
                     file_id=file.id,
-                    file_type=file.mime_type
-                )
+                    file_type=file.mime_type)
             else:
                 while True:
                     page = self._gdrive.lsdir(dir_id=file.id,
@@ -66,11 +56,10 @@ class GDriveWrapper:
                                               page_size=20,
                                               order_by=GDRIVE_SORT_KEYS[order_key])
                     for file in page.files:
-                        print_remote_file(
+                        common_operations.print_remote_file(
                             file_name=file.name,
                             file_id=file.id,
-                            file_type=file.mime_type
-                        )
+                            file_type=file.mime_type)
                     if page.next_page_token is not None:
                         user_confirm = input(LIST_NEXT_PAGE_MSG)
                         if user_confirm in {"y", "yes", ""}:
@@ -93,7 +82,7 @@ class GDriveWrapper:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        remove(
+        common_operations.remove(
             storage=self._gdrive,
             file_name=file.name,
             destination=file.id,
@@ -119,7 +108,10 @@ class GDriveWrapper:
             dl_path = file.name
         else:
             dl_path = os.path.join(destination, file.name)
-        check_overwriting(overwrite, dl_path)
+        if overwrite and os.path.exists(dl_path):
+            common_operations.print_overwrite_dialog(dl_path)
+        if not overwrite and os.path.exists(dl_path):
+            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
         if not file.mime_type.startswith(G_SUITE_FILES_TYPE):
             file_bytes = self._gdrive.download(file.id)
             with open(dl_path, "wb+") as f:
@@ -209,7 +201,9 @@ class GDriveWrapper:
         """
         file_abs_path = os.path.abspath(file_path)
         if os.path.isfile(file_abs_path):
-            put_file(self._gdrive, file_abs_path)
+            common_operations.put_file(
+                storage=self._gdrive,
+                local_path=file_abs_path)
         elif os.path.isdir(file_abs_path):
             parents = {}
             tree = os.walk(file_abs_path)
@@ -226,7 +220,10 @@ class GDriveWrapper:
                     continue
                 for file in filenames:
                     ul_path = os.path.join(root, file)
-                    put_file(self._gdrive, ul_path, folder_id)
+                    common_operations.put_file(
+                        storage=self._gdrive,
+                        local_path=ul_path,
+                        destination=folder_id)
                 parents[root] = folder_id
         else:
             raise FileNotFoundError(errno.ENOENT,
