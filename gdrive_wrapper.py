@@ -1,29 +1,29 @@
 import errno
 import os
 import shutil
-from colorama import Fore, Style
 from defaults import (
     GDRIVE_SORT_KEYS,
     ABORTED_MSG,
     SUCCESSFUL_DELETE_FILE_MSG,
     SUCCESSFUL_FILE_TRASH_MSG,
-    MOVE_TO_TRASH_CONFIRMATION_MSG,
-    DELETE_CONFIRMATION_MSG,
+    MOVE_FILE_TO_TRASH_CONFIRMATION_MSG,
+    DELETE_DIR_CONFIRMATION_MSG,
     LIST_NEXT_PAGE_MSG,
-    OVERWRITING_DIRECTORY_MSG,
-    OVERWRITE_REQUEST_MSG,
     MAKING_DIRECTORY_MSG,
     DOWNLOADING_FILE_MSG,
-    UPLOADING_FILE_MSG,
     UPLOADING_DIRECTORY_MSG,
-    ACCESS_DENIED_MSG,
-    OVERWRITING_FILE_MSG,
     SKIP_G_SUITE_FILE_MSG,
     G_SUITE_FILES_TYPE,
     GDRIVE_DIRECTORY_TYPE
 )
 from cloudbackup.file_objects import GDriveFile
 from cloudbackup.gdrive import GDrive
+from common_operations import (
+    check_overwriting,
+    put_file,
+    print_remote_file,
+    remove
+)
 
 
 class GDriveWrapper:
@@ -46,16 +46,31 @@ class GDriveWrapper:
         if file is None:
             files = self.get_all_files(owners=['me'])
             for file in files:
-                GDriveWrapper.print(file)
+                #  last argument shows whether file is directory or not
+                print_remote_file(
+                    file_name=file.name,
+                    file_id=file.id,
+                    file_type=file.mime_type
+                )
         else:
-            if file.mime_type != "application/vnd.google-apps.folder":
-                GDriveWrapper.print(file)
+            if file.mime_type != GDRIVE_DIRECTORY_TYPE:
+                print_remote_file(
+                    file_name=file.name,
+                    file_id=file.id,
+                    file_type=file.mime_type
+                )
             else:
                 while True:
-                    page = self._gdrive.lsdir(dir_id=file.id, owners=['me'], page_size=20,
+                    page = self._gdrive.lsdir(dir_id=file.id,
+                                              owners=['me'],
+                                              page_size=20,
                                               order_by=GDRIVE_SORT_KEYS[order_key])
                     for file in page.files:
-                        GDriveWrapper.print(file)
+                        print_remote_file(
+                            file_name=file.name,
+                            file_id=file.id,
+                            file_type=file.mime_type
+                        )
                     if page.next_page_token is not None:
                         user_confirm = input(LIST_NEXT_PAGE_MSG)
                         if user_confirm in {"y", "yes", ""}:
@@ -78,21 +93,12 @@ class GDriveWrapper:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        if permanently:
-            user_confirm = input(DELETE_CONFIRMATION_MSG.format(file_name=file.name))
-            if user_confirm in {"y", "yes", ""}:
-                self._gdrive.remove(file.id, permanently=True)
-                print(SUCCESSFUL_DELETE_FILE_MSG.format(file_name=file.name))
-
-            else:
-                print(ABORTED_MSG)
-        else:
-            user_confirm = input(MOVE_TO_TRASH_CONFIRMATION_MSG.format(file_name=file.name))
-            if user_confirm in {"y", "yes", ""}:
-                self._gdrive.remove(file.id)
-                print(SUCCESSFUL_FILE_TRASH_MSG.format(file_name=file.name))
-            else:
-                print(ABORTED_MSG)
+        remove(
+            storage=self._gdrive,
+            file_name=file.name,
+            destination=file.id,
+            file_type=file.mime_type,
+            permanently=permanently)
 
     def download(self, file, destination=None, overwrite=False) -> None:
         """
@@ -113,18 +119,7 @@ class GDriveWrapper:
             dl_path = file.name
         else:
             dl_path = os.path.join(destination, file.name)
-        dl_path = os.path.abspath(dl_path)
-        if overwrite and os.path.exists(dl_path):
-            user_confirm = input(OVERWRITE_REQUEST_MSG.format(file_name=dl_path))
-            if user_confirm not in {"y", "yes", ""}:
-                print(ABORTED_MSG)
-                raise PermissionError(ACCESS_DENIED_MSG)
-            if os.path.isfile(dl_path):
-                print(OVERWRITING_FILE_MSG.format(file_name=dl_path))
-            elif os.path.isdir(dl_path):
-                print(OVERWRITING_DIRECTORY_MSG.format(dir_name=dl_path))
-        if not overwrite and os.path.exists(dl_path):
-            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
+        check_overwriting(overwrite, dl_path)
         if not file.mime_type.startswith(G_SUITE_FILES_TYPE):
             file_bytes = self._gdrive.download(file.id)
             with open(dl_path, "wb+") as f:
@@ -138,11 +133,16 @@ class GDriveWrapper:
                 os.mkdir(dl_path)
             while True:
                 next_page_token = None
-                page = self._gdrive.lsdir(file.id, owners=['me'], page_token=next_page_token, page_size=1000)
+                page = self._gdrive.lsdir(file.id,
+                                          owners=['me'],
+                                          page_token=next_page_token,
+                                          page_size=1000)
                 for file in page.files:
                     if not file.mime_type.startswith(G_SUITE_FILES_TYPE):
                         print(DOWNLOADING_FILE_MSG.format(file_name=os.path.join(dl_path, file.name)))
-                    self.download(file, destination=dl_path, overwrite=overwrite)
+                    self.download(file,
+                                  destination=dl_path,
+                                  overwrite=overwrite)
                 next_page_token = page.next_page_token
                 if next_page_token is None:
                     break
@@ -162,7 +162,9 @@ class GDriveWrapper:
         """
         all_files, page_token = [], None
         while True:
-            page_files, next_page_token = self._gdrive.lsdir(owners=owners, page_size=1000, page_token=page_token)
+            page_files, next_page_token = self._gdrive.lsdir(owners=owners,
+                                                             page_size=1000,
+                                                             page_token=page_token)
             all_files.extend(page_files)
             if next_page_token is None:
                 break
@@ -207,7 +209,7 @@ class GDriveWrapper:
         """
         file_abs_path = os.path.abspath(file_path)
         if os.path.isfile(file_abs_path):
-            self._put_file(file_abs_path)
+            put_file(self._gdrive, file_abs_path)
         elif os.path.isdir(file_abs_path):
             parents = {}
             tree = os.walk(file_abs_path)
@@ -224,40 +226,9 @@ class GDriveWrapper:
                     continue
                 for file in filenames:
                     ul_path = os.path.join(root, file)
-                    self._put_file(ul_path, parent_id=folder_id)
+                    put_file(self._gdrive, ul_path, folder_id)
                 parents[root] = folder_id
         else:
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_path)
-
-    def _put_file(self, file_path, parent_id=None) -> None:
-        """
-        Getting link for upload file and then uploading file raw binary data
-        to this link.
-
-        Args:
-            file_path: path to file which needs to be uploaded
-            parent_id: Optional; id of parent folder passed in `file_path`
-
-        Raises:
-            ApiResponseException: an error occurred accessing API
-        """
-        print(UPLOADING_FILE_MSG.format(file_name=file_path))
-        link = self._gdrive.get_upload_link(file_path, parent_id)
-        with open(file_path, "rb") as f:
-            file_data = f.read()
-        self._gdrive.upload_entire_file(link, file_data)
-
-    @staticmethod
-    def print(file):
-        """
-        Colorized print of GDriveFile object. Directories print in cyan color.
-        Files' color doesn't change.
-
-        Args:
-            file: GDriveFile object which needs to be printed.
-        """
-        default_view = file.name + " " + f"({file.id})"
-        if file.mime_type == "application/vnd.google-apps.folder":
-            print("".join(Fore.CYAN + default_view + Style.RESET_ALL))
-        else:
-            print(default_view)
+            raise FileNotFoundError(errno.ENOENT,
+                                    os.strerror(errno.ENOENT),
+                                    file_path)

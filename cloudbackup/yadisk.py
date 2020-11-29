@@ -113,7 +113,7 @@ class YaDisk:
         Send initial request to get link for download a file.
 
         Args:
-            destination: Directory on YandexDisk storage where to save uploaded file.
+            destination: directory on YandexDisk storage where to save uploaded file.
              Examples: 'disk:/path/foo.py', '/path/bar'.
 
         Returns:
@@ -130,9 +130,9 @@ class YaDisk:
             raise ApiResponseException(r.status_code, r.json()["description"])
         return r.json()["href"]
 
-    def single_upload(self, upload_link, file_data) -> None:
+    def upload_entire_file(self, upload_link, file_data) -> None:
         """
-        Upload a file by one single request. Before use this method call `get_upload_link`
+        Upload a entire file by one single request. Before use this method call `get_upload_link`
         and provide upload link this method.
 
         Args:
@@ -173,7 +173,9 @@ class YaDisk:
 
         Raises:
             ApiResponseException: an error occurred accessing API.
+            IncorrectPathException: if path has prohibited chars.
         """
+
         YaDisk._check_path(path)
         flags = {
             "path": path,

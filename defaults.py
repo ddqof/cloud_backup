@@ -40,8 +40,10 @@ SUCCESSFUL_DIR_TRASH_MSG = "Successfully moved directory: `{dir_name}` to the tr
 G_SUITE_DIRECTORY = "Directory: `{file_name}` contains G.Suite file which isn't downloadable. " \
                     "If you want to download directory and skip this file, pass '-f' flag"
 G_SUITE_FILE = "G.Suite file: `{file.name}` isn't downloadable."
-MOVE_TO_TRASH_CONFIRMATION_MSG = "Are you sure you want to move file: `{file_name}` to the trash? " + CONFIRM_CHOICE_STRING
-DELETE_CONFIRMATION_MSG = "Are you sure you want to delete `{file_name}` file? " + CONFIRM_CHOICE_STRING
+MOVE_FILE_TO_TRASH_CONFIRMATION_MSG = "Are you sure you want to move file: `{file_name}` to the trash? " + CONFIRM_CHOICE_STRING
+MOVE_DIR_TO_TRASH_CONFIRMATION_MSG = "Are you sure you want to move directory: `{dir_name}` to the trash? " + CONFIRM_CHOICE_STRING
+DELETE_DIR_CONFIRMATION_MSG = "Are you sure you want to delete directory: `{dir_name}`? " + CONFIRM_CHOICE_STRING
+DELETE_FILE_CONFIRMATION_MSG = "Are you sure you want to delete file: `{file_name}`? " + CONFIRM_CHOICE_STRING
 LIST_NEXT_PAGE_MSG = "List next page? " + CONFIRM_CHOICE_STRING
 OVERWRITE_REQUEST_MSG = "Are you sure you want to overwrite file: `{file_name}`? " + CONFIRM_CHOICE_STRING
 OVERWRITING_DIRECTORY_MSG = "Overwriting directory: `{dir_name}`..."
