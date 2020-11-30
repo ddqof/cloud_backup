@@ -144,7 +144,7 @@ class GDrive:
                              headers=self._auth_headers)
         GDrive._check_status(r)
 
-    def get_upload_link(self, file_path, parent_id="root") -> str:
+    def get_upload_link(self, file_path, parent_id) -> str:
         """
         Send request to Google Drive API for getting link for file upload.
 
@@ -163,10 +163,9 @@ class GDrive:
             "X-Upload-Content-Type": mimetypes.guess_type(file_path)[0]
         }
         headers.update(self._auth_headers)
-        metadata = {
-            "name": filename,
-            "parents": parent_id
-        }
+        metadata = {"name": filename}
+        if parent_id is not None:
+            metadata["parents"] = [parent_id]
         metadata = json.dumps(metadata)
         r = requests.post("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
                           headers=headers, data=metadata)

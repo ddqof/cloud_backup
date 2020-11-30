@@ -2,16 +2,12 @@
 
 import common_operations
 import sys
-import os
 from colorama import init
 from cloudbackup.gdrive import GDrive
 from cloudbackup.yadisk import YaDisk
 from cloudbackup.exceptions import ApiResponseException
-from defaults import (SUCCESSFUL_DOWNLOAD_FILE_MSG,
-                      GDRIVE_DIRECTORY_TYPE,
-                      SUCCESSFUL_DOWNLOAD_DIR_MSG,
-                      UNEXPECTED_VALUE_MSG, DOWNLOAD_COMPLETED_MSG, UPLOAD_COMPLETED_MSG, SUCCESSFUL_UPLOAD_FILE_MSG,
-                      SUCCESSFUL_UPLOAD_DIR_MSG)
+from defaults import (DOWNLOAD_COMPLETED_MSG,
+                      UPLOAD_COMPLETED_MSG)
 from parser import parse_args
 from gdrive_wrapper import GDriveWrapper
 from yadisk_wrapper import YaDiskWrapper
@@ -30,16 +26,16 @@ def main():
     else:
         error_msg = common_operations.get_unexpected_value_msg(args.storage)
         raise ValueError(error_msg)
-
     try:
         if args.operation == "ls":
             wrapper.lsdir(args.remote_file, order_key=args.order_by)
-        # elif args.operation == "dl":
-        #     common_operations.download(storage,
-        #                                remote_target=args.remote_file,
-        #                                local_destination=args.destination,
-        #                                overwrite=args.overwrite)
-        #     exit_msg = DOWNLOAD_COMPLETED_MSG
+        elif args.operation == "dl":
+            if isinstance(storage, GDrive):
+                file = wrapper.get_file_object_by_id(args.remote_file)
+                wrapper.download(file, args.destination, args.overwrite)
+            elif isinstance(storage, YaDisk):
+                wrapper.download(args.remote_file, args.destination, args.overwrite)
+            exit_msg = DOWNLOAD_COMPLETED_MSG
         elif args.operation == "ul":
             wrapper.upload(args.local_file)
             exit_msg = UPLOAD_COMPLETED_MSG
@@ -47,7 +43,6 @@ def main():
             wrapper.remove(args.remote_file, permanently=args.permanently)
         if exit_msg:
             print(exit_msg)
-
     except (ApiResponseException,
             FileExistsError,
             FileNotFoundError,

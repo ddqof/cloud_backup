@@ -4,7 +4,6 @@ import shutil
 
 from colorama import Fore, Style
 
-from cloudbackup.file_objects import GDriveFile
 from defaults import (
     OVERWRITING_DIRECTORY_MSG,
     OVERWRITING_FILE_MSG,
@@ -23,10 +22,6 @@ from defaults import (
     MOVE_DIR_TO_TRASH_CONFIRMATION_MSG,
     SUCCESSFUL_DIR_TRASH_MSG,
     OVERWRITE_DIR_REQUEST_MSG,
-    DOWNLOADING_DIR_AS_ZIP_MSG,
-    DOWNLOADING_FILE_MSG,
-    MAKING_DIRECTORY_MSG,
-    G_SUITE_FILE,
 )
 from cloudbackup.gdrive import GDrive
 from cloudbackup.yadisk import YaDisk
@@ -48,98 +43,6 @@ def print_overwrite_dialog(path) -> None:
         raise PermissionError(ACCESS_DENIED_MSG)
 
 
-def download(
-        storage: GDrive or YaDisk,
-        remote_target,
-        local_destination=None,
-        overwrite=False
-) -> None:
-    if isinstance(storage, GDrive):
-        file = get_file_object_by_id(storage, remote_target)
-        if local_destination is None:
-            #  dl_path is a directory where downloaded file will be saved
-            dl_path = file.name
-        else:
-            dl_path = os.path.join(local_destination, file.name)
-        if file.type == "dir":
-            download_msg = MAKING_DIRECTORY_MSG.format(dir_name=file.name)
-        elif file.type == "g.suite":
-            download_msg = G_SUITE_FILE.format(file_name=file.name)
-        else:
-            download_msg = DOWNLOADING_FILE_MSG.format(file_name=file.name)
-    elif isinstance(storage, YaDisk):
-        file = storage.lsdir(remote_target).file_info
-        if remote_target.startswith("disk:/"):
-            path_chunks = remote_target[5:].split("/")
-        else:
-            path_chunks = remote_target.split("/")
-        if local_destination is None:
-            dl_path = path_chunks[-1]
-        else:
-            if not local_destination.endswith(os.path.sep):
-                local_destination += os.path.sep
-            dl_path = os.path.join(local_destination, path_chunks[-1])
-        if file.type == "dir":
-            dl_path += ".zip"
-            download_msg = DOWNLOADING_DIR_AS_ZIP_MSG.format(dir_name=remote_target, file_name=dl_path)
-        else:
-            download_msg = DOWNLOADING_FILE_MSG.format(file_name=file.name)
-    else:
-        raise ValueError(get_unexpected_value_msg(storage))
-    if overwrite and os.path.exists(dl_path):
-        print_overwrite_dialog(dl_path)
-        shutil.rmtree(dl_path)
-        os.mkdir(dl_path)
-    if not overwrite and os.path.exists(dl_path):
-        raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
-    else:
-        print(download_msg)
-        file_bytes = storage.download(remote_target)
-        with open(dl_path, "wb+") as f:
-            f.write(file_bytes)
-    if isinstance(storage, GDrive):
-        while True:
-            next_page_token = None
-            page = storage.lsdir(remote_target,
-                                 owners=["me"],
-                                 page_token=next_page_token,
-                                 page_size=1000)
-            for file in page.files:
-                download(storage,
-                         remote_target=file.id,
-                         local_destination=dl_path,
-                         overwrite=overwrite)
-                next_page_token = page.next_page_token
-                if next_page_token is None:
-                    break
-
-
-def put_file(storage: GDrive or YaDisk, local_path, destination) -> None:
-    """
-    Getting link for upload file and then uploading file raw binary data
-    to this link.
-
-    Args:
-        storage: storage where to upload a file
-        local_path: path to file which needs to be uploaded
-        destination: id of parent folder in case of Google Drive or
-         directory on YandexDisk storage where to save uploaded file.
-
-    Raises:
-        ApiResponseException: an error occurred accessing API
-    """
-    print(UPLOADING_FILE_MSG.format(file_name=local_path))
-    if isinstance(storage, GDrive):
-        link = storage.get_upload_link(local_path, destination)
-    elif isinstance(storage, YaDisk):
-        link = storage.get_upload_link(local_path)
-    else:
-        raise ValueError(get_unexpected_value_msg(storage))
-    with open(local_path, "rb") as f:
-        file_data = f.read()
-    storage.upload_entire_file(link, file_data)
-
-
 def remove(
         storage: GDrive or YaDisk,
         file_name,
@@ -154,7 +57,7 @@ def remove(
         storage: storage where file needs to be deleted
         file_name: name of file on remote storage
         destination: id of file or folder that needs to be deleted in case of
-         Google Drive. In case of YandexDisk storage pass path of a remote file.
+         Google Drive. In case of YandexDisk storage remote file path is required.
         file_type: type of file on remote storage
         permanently: Optional; whether to delete the file permanently or move to the trash.
 
@@ -185,6 +88,36 @@ def remove(
         print(exit_msg)
     else:
         raise ValueError(get_unexpected_value_msg(storage))
+
+
+def put_file(storage: GDrive or YaDisk, local_path, destination=None) -> None:
+    """
+    Getting link for upload file and then uploading file raw binary data
+    to this link.
+
+    Args:
+        storage: storage where to upload a file
+        local_path: path to file which needs to be uploaded
+        destination: id of parent folder in case of Google Drive or
+         directory on YandexDisk storage where to save uploaded file.
+
+    Raises:
+        ApiResponseException: an error occurred accessing API
+    """
+    if isinstance(storage, GDrive):
+        if destination is None:
+            destination = "root"
+        link = storage.get_upload_link(local_path, destination)
+    elif isinstance(storage, YaDisk):
+        if destination is None:
+            destination = "/"
+        link = storage.get_upload_link(destination)
+    else:
+        raise ValueError(get_unexpected_value_msg(storage))
+    print(UPLOADING_FILE_MSG.format(file_name=local_path))
+    with open(local_path, "rb") as f:
+        file_data = f.read()
+    storage.upload_entire_file(link, file_data)
 
 
 def print_remote_file(file_name, file_id, file_type) -> None:
