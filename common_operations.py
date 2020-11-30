@@ -27,7 +27,6 @@ from defaults import (
     DOWNLOADING_FILE_MSG,
     MAKING_DIRECTORY_MSG,
     G_SUITE_FILE,
-    SKIP_G_SUITE_FILE_MSG
 )
 from cloudbackup.gdrive import GDrive
 from cloudbackup.yadisk import YaDisk
@@ -51,40 +50,40 @@ def print_overwrite_dialog(path) -> None:
 
 def download(
         storage: GDrive or YaDisk,
-        remote_destination,
-        file_name,
-        file_type,
+        remote_target,
         local_destination=None,
         overwrite=False
 ) -> None:
     if isinstance(storage, GDrive):
+        file = get_file_object_by_id(storage, remote_target)
         if local_destination is None:
             #  dl_path is a directory where downloaded file will be saved
-            dl_path = file_name
+            dl_path = file.name
         else:
-            dl_path = os.path.join(local_destination, file_name)
-        if file_type == "dir":
-            download_msg = MAKING_DIRECTORY_MSG.format(dir_name=file_name)
-        elif file_type == "g.suite":
-            download_msg = G_SUITE_FILE.format(file_name=file_name)
+            dl_path = os.path.join(local_destination, file.name)
+        if file.type == "dir":
+            download_msg = MAKING_DIRECTORY_MSG.format(dir_name=file.name)
+        elif file.type == "g.suite":
+            download_msg = G_SUITE_FILE.format(file_name=file.name)
         else:
-            download_msg = DOWNLOADING_FILE_MSG.format(file_name=file_name)
+            download_msg = DOWNLOADING_FILE_MSG.format(file_name=file.name)
     elif isinstance(storage, YaDisk):
-        if remote_destination.startswith("disk:/"):
-            path_chunks = remote_destination[5:].split("/")
+        file = storage.lsdir(remote_target).file_info
+        if remote_target.startswith("disk:/"):
+            path_chunks = remote_target[5:].split("/")
         else:
-            path_chunks = remote_destination.split("/")
+            path_chunks = remote_target.split("/")
         if local_destination is None:
             dl_path = path_chunks[-1]
         else:
             if not local_destination.endswith(os.path.sep):
                 local_destination += os.path.sep
             dl_path = os.path.join(local_destination, path_chunks[-1])
-        if file_type == "dir":
+        if file.type == "dir":
             dl_path += ".zip"
-            download_msg = DOWNLOADING_DIR_AS_ZIP_MSG.format(dir_name=remote_destination, file_name=dl_path)
+            download_msg = DOWNLOADING_DIR_AS_ZIP_MSG.format(dir_name=remote_target, file_name=dl_path)
         else:
-            download_msg = DOWNLOADING_FILE_MSG.format(file_name=file_name)
+            download_msg = DOWNLOADING_FILE_MSG.format(file_name=file.name)
     else:
         raise ValueError(get_unexpected_value_msg(storage))
     if overwrite and os.path.exists(dl_path):
@@ -95,21 +94,19 @@ def download(
         raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
     else:
         print(download_msg)
-        file_bytes = storage.download(remote_destination)
+        file_bytes = storage.download(remote_target)
         with open(dl_path, "wb+") as f:
             f.write(file_bytes)
     if isinstance(storage, GDrive):
         while True:
             next_page_token = None
-            page = storage.lsdir(remote_destination,
+            page = storage.lsdir(remote_target,
                                  owners=["me"],
                                  page_token=next_page_token,
                                  page_size=1000)
             for file in page.files:
                 download(storage,
-                         remote_destination=file.id,
-                         file_name=file.name,
-                         file_type=file.type,
+                         remote_target=file.id,
                          local_destination=dl_path,
                          overwrite=overwrite)
                 next_page_token = page.next_page_token
@@ -117,54 +114,30 @@ def download(
                     break
 
 
-def get_file_object_by_id(gdrive: GDrive, start_id) -> GDriveFile:
+def put_file(storage: GDrive or YaDisk, local_path, destination) -> None:
     """
-    Method used for user-friendly CLI interface that allows
-    type only start of file id to get full file id.
+    Getting link for upload file and then uploading file raw binary data
+    to this link.
 
     Args:
-        start_id: start of id
-    Returns:
-         GDriveFileObject that has id starts with given start_id
+        storage: storage where to upload a file
+        local_path: path to file which needs to be uploaded
+        destination: id of parent folder in case of Google Drive or
+         directory on YandexDisk storage where to save uploaded file.
+
+    Raises:
+        ApiResponseException: an error occurred accessing API
     """
-    if start_id is None:
-        raise ValueError(get_unexpected_value_msg(start_id))
-    if start_id == "root":
-        return GDriveFile({"name": "root", "id": "root", "mimeType": "application/vnd.google-apps.folder"})
-    found = []
-    for file in get_all_gdrive_files(gdrive):
-        if file.id.startswith(start_id):
-            found.append(file)
-            if len(found) > 1:
-                raise FileNotFoundError("Please enter more symbols to determine File ID.")
-    if len(found) == 1:
-        return found[0]
+    print(UPLOADING_FILE_MSG.format(file_name=local_path))
+    if isinstance(storage, GDrive):
+        link = storage.get_upload_link(local_path, destination)
+    elif isinstance(storage, YaDisk):
+        link = storage.get_upload_link(local_path)
     else:
-        raise FileNotFoundError(f"There is no file starts with id: {start_id}.")
-
-
-def get_all_gdrive_files(gdrive: GDrive, owners=None) -> list:
-    """
-    Method used for getting all files on Google Drive storage using
-    `GDrive` class from `cloudbackup.gdrive`.
-
-    Args:
-        owners: Optional; list of owners whose files should be listed.
-
-    Returns:
-        list of all files in Google Drive storage.
-    """
-    all_files, page_token = [], None
-    while True:
-        page_files, next_page_token = gdrive.lsdir(owners=owners,
-                                                   page_size=1000,
-                                                   page_token=page_token)
-        all_files.extend(page_files)
-        if next_page_token is None:
-            break
-        else:
-            page_token = next_page_token
-    return all_files
+        raise ValueError(get_unexpected_value_msg(storage))
+    with open(local_path, "rb") as f:
+        file_data = f.read()
+    storage.upload_entire_file(link, file_data)
 
 
 def remove(
@@ -212,35 +185,6 @@ def remove(
         print(exit_msg)
     else:
         raise ValueError(get_unexpected_value_msg(storage))
-
-
-def put_file(storage: GDrive or YaDisk, local_path, destination=None) -> None:
-    """
-    Getting link for upload file and then uploading file raw binary data
-    to this link.
-
-    Args:
-        storage: storage where to upload a file
-        local_path: path to file which needs to be uploaded
-        destination: id of parent folder in case of Google Drive or
-         directory on YandexDisk storage where to save uploaded file.
-
-    Raises:
-        ApiResponseException: an error occurred accessing API
-    """
-    if isinstance(storage, GDrive):
-        if destination is None:
-            destination = "root"
-    elif isinstance(storage, YaDisk):
-        if destination is None:
-            destination = "/"
-    else:
-        raise ValueError(get_unexpected_value_msg(storage))
-    print(UPLOADING_FILE_MSG.format(file_name=local_path))
-    link = storage.get_upload_link(local_path, destination)
-    with open(local_path, "rb") as f:
-        file_data = f.read()
-    storage.upload_entire_file(link, file_data)
 
 
 def print_remote_file(file_name, file_id, file_type) -> None:

@@ -78,16 +78,17 @@ class YaDiskWrapper:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        if os.path.isfile(file_path):
+        file_abs_path = os.path.abspath(file_path)
+        if os.path.isfile(file_abs_path):
             common_operations.put_file(
                 storage=self._yadisk,
-                local_path=file_path,
-                destination=f"{destination}{os.path.split(file_path)[1]}")
-        elif os.path.isdir(file_path):
-            if file_path.endswith(os.path.sep):
-                file_path = file_path[:-1]
-            tree = os.walk(file_path)
-            head = os.path.split(file_path)[0]
+                local_path=file_abs_path,
+                destination=f"{destination}{os.path.split(file_abs_path)[1]}")
+        elif os.path.isdir(file_abs_path):
+            if file_abs_path.endswith(os.path.sep):
+                file_abs_path = file_abs_path[:-1]
+            tree = os.walk(file_abs_path)
+            head = os.path.split(file_abs_path)[0]
             for root, dirs, filenames in tree:
                 destination = root.split(head)[1]
                 print(UPLOADING_DIRECTORY_MSG.format(dir_name=destination))
@@ -100,7 +101,7 @@ class YaDiskWrapper:
                                                local_path=current_ul_path,
                                                destination=f"{destination}/{filename}")
         else:
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_path)
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_abs_path)
 
     def remove(self, path, permanently=False) -> None:
         remote_file = self._yadisk.lsdir(path).file_info
@@ -110,34 +111,3 @@ class YaDiskWrapper:
                                  file_type=remote_file.type,
                                  permanently=permanently)
 
-    def download(self, path, destination=None, overwrite=False) -> None:
-        #  rebuild path for platform independence
-        if path.startswith("disk:/"):
-            path_chunks = path[5:].split("/")
-        else:
-            path_chunks = path.split("/")
-        #  check if directory downloadable only as zip
-        remote_file_object = self._yadisk.lsdir(path).file_info
-        if remote_file_object.type == "dir":
-            path_chunks[-1] = remote_file_object.name + ".zip"
-        if destination is None:
-            dl_path = path_chunks[-1]
-        else:
-            if not destination.endswith(os.path.sep):
-                destination += os.path.sep
-            dl_path = os.path.join(destination, path_chunks[-1])
-        dl_path = os.path.abspath(dl_path)
-        if remote_file_object.type == "dir":
-            print(DOWNLOADING_DIR_AS_ZIP_MSG.format(dir_name=path, file_name=dl_path))
-        elif remote_file_object.type == "file":
-            print(DOWNLOADING_FILE_MSG.format(file_name=dl_path))
-        else:
-            raise ValueError(UNEXPECTED_VALUE_MSG.format(var_name=remote_file_object))
-        if overwrite and os.path.exists(path):
-            common_operations.print_overwrite_dialog(path)
-        else:
-            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
-        file_content = self._yadisk.download(path)
-        with open(dl_path, "wb+") as f:
-            f.write(file_content)
-            print(SUCCESSFUL_DOWNLOAD_FILE_MSG.format(file_name=path_chunks[-1]))

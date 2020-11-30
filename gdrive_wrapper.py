@@ -91,59 +91,6 @@ class GDriveWrapper:
             file_type=file.type,
             permanently=permanently)
 
-    def download(self, start_id, destination=None, overwrite=False) -> None:
-        """
-        Method allows to download file or directory using `GDrive` class
-        from `cloudbackup.gdrive`. Skips G.Suite files.
-
-        Args:
-            file: GDriveFileObject to download.
-            destination: Optional; Pass path where to store downloaded file.
-            overwrite: Optional; Whether to overwrite file if it already exists.
-
-        Raises:
-            ApiResponseException: an error occurred accessing API.
-            ValueError: if user denied access to overwrite file or directory
-            FileExistsError: if file exists but overwrite key wasn't given
-        """
-        file = self.get_file_object_by_id(start_id)
-        if destination is None:
-            dl_path = file.name
-        else:
-            dl_path = os.path.join(destination, file.name)
-        if overwrite and os.path.exists(dl_path):
-            common_operations.print_overwrite_dialog(dl_path)
-        if not overwrite and os.path.exists(dl_path):
-            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
-        if not file.type == "file":
-            file_bytes = self._gdrive.download(file.id)
-            with open(dl_path, "wb+") as f:
-                f.write(file_bytes)
-        elif file.type == "dir":
-            if overwrite and os.path.exists(dl_path):
-                shutil.rmtree(dl_path)
-                os.mkdir(dl_path)
-            else:
-                print(MAKING_DIRECTORY_MSG.format(dir_name=dl_path))
-                os.mkdir(dl_path)
-            while True:
-                next_page_token = None
-                page = self._gdrive.lsdir(file.id,
-                                          owners=['me'],
-                                          page_token=next_page_token,
-                                          page_size=1000)
-                for file in page.files:
-                    if not file.mime_type.startswith(G_SUITE_FILES_TYPE):
-                        print(DOWNLOADING_FILE_MSG.format(file_name=os.path.join(dl_path, file.name)))
-                    self.download(file,
-                                  destination=dl_path,
-                                  overwrite=overwrite)
-                next_page_token = page.next_page_token
-                if next_page_token is None:
-                    break
-        else:
-            print(SKIP_G_SUITE_FILE_MSG.format(file_name=dl_path))
-
     def get_all_files(self, owners=None) -> list:
         """
         Method used for getting all files on Google Drive storage using
@@ -206,7 +153,9 @@ class GDriveWrapper:
         if os.path.isfile(file_abs_path):
             common_operations.put_file(
                 storage=self._gdrive,
-                local_path=file_abs_path)
+                local_path=file_abs_path,
+                destination="root"
+            )
         elif os.path.isdir(file_abs_path):
             parents = {}
             tree = os.walk(file_abs_path)
@@ -229,6 +178,52 @@ class GDriveWrapper:
                         destination=folder_id)
                 parents[root] = folder_id
         else:
-            raise FileNotFoundError(errno.ENOENT,
-                                    os.strerror(errno.ENOENT),
-                                    file_path)
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_path)
+
+    def get_file_object_by_id(self, start_id) -> GDriveFile:
+        """
+        Method used for user-friendly CLI interface that allows
+        type only start of file id to get full file id.
+
+        Args:
+            start_id: start of id
+        Returns:
+             GDriveFileObject that has id starts with given start_id
+        """
+        if start_id is None:
+            raise ValueError(common_operations.get_unexpected_value_msg(start_id))
+        if start_id == "root":
+            return GDriveFile({"name": "root", "id": "root", "mimeType": "application/vnd.google-apps.folder"})
+        found = []
+        for file in self.get_all_gdrive_files():
+            if file.id.startswith(start_id):
+                found.append(file)
+                if len(found) > 1:
+                    raise FileNotFoundError("Please enter more symbols to determine File ID.")
+        if len(found) == 1:
+            return found[0]
+        else:
+            raise FileNotFoundError(f"There is no file starts with id: {start_id}.")
+
+    def get_all_gdrive_files(self, owners=None) -> list:
+        """
+        Method used for getting all files on Google Drive storage using
+        `GDrive` class from `cloudbackup.gdrive`.
+
+        Args:
+            owners: Optional; list of owners whose files should be listed.
+
+        Returns:
+            list of all files in Google Drive storage.
+        """
+        all_files, page_token = [], None
+        while True:
+            page_files, next_page_token = self._gdrive.lsdir(owners=owners,
+                                                             page_size=1000,
+                                                             page_token=page_token)
+            all_files.extend(page_files)
+            if next_page_token is None:
+                break
+            else:
+                page_token = next_page_token
+        return all_files

@@ -29,6 +29,8 @@ G_SUITE_FILES_TYPE = "application/vnd.google-apps"
 
 CONFIRM_CHOICE_STRING = "([y]/n) "
 ABORTED_MSG = "Aborted"
+UPLOAD_COMPLETED_MSG = "Upload completed"
+DOWNLOAD_COMPLETED_MSG = "Download completed"
 SUCCESSFUL_DOWNLOAD_FILE_MSG = "Successfully downloaded file: `{file_name}`"
 SUCCESSFUL_DOWNLOAD_DIR_MSG = "Successfully downloaded directory: `{dir_name}`"
 SUCCESSFUL_UPLOAD_FILE_MSG = "Successfully uploaded file: `{file_name}`"
