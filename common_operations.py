@@ -1,6 +1,4 @@
-import errno
 import os
-import shutil
 
 from colorama import Fore, Style
 

@@ -3,7 +3,7 @@ import json
 import os
 import mimetypes
 import requests
-from ._authenticators import GDriveAuth
+from ._authenticator import Authenticator
 from .file_objects import GDriveFile
 from .exceptions import ApiResponseException
 
@@ -16,7 +16,7 @@ class GDrive:
     def __init__(self):
         self._auth_headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {GDriveAuth.authenticate()}"
+            "Authorization": f"Bearer {Authenticator().get_gdrive_token()}"
         }
 
     def download(self, file_id) -> bytes:

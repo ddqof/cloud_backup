@@ -1,6 +1,6 @@
 import requests
 from collections import namedtuple
-from cloudbackup._authenticators import YaDiskAuth
+from cloudbackup._authenticator import Authenticator
 from cloudbackup.exceptions import ApiResponseException, IncorrectPathException, FileIsNotDownloadableException
 from cloudbackup.file_objects import YaDiskFile
 
@@ -13,7 +13,7 @@ class YaDisk:
     def __init__(self):
         self._auth_headers = {
             "Content-Type": "application/json",
-            "Authorization": YaDiskAuth.authenticate()
+            "Authorization": Authenticator().get_yadisk_token()
         }
 
     def lsdir(self, path, sort="modified", limit=20, offset=0) -> namedtuple("Page", ["file_info", "files"]):
