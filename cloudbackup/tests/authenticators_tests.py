@@ -22,29 +22,6 @@ class TestAuthenticator(TestCase):
         if os.path.exists(TEST_YANDEX_TOKEN_PATH):
             os.remove(TEST_YANDEX_TOKEN_PATH)
 
-    # def test_local_server(self):
-    #     """
-    #     Test checks that LocalServer.handle will return correct values if
-    #     pass url with particular keys into it.
-    #
-    #     P.S. I'm not sure that this test is required
-    #     """
-    #     url_keys = {
-    #         "client_id": "624999999999-ged8qvejht3nu7rks93tl78f5q2dhmpp.apps.googleusercontent.com",
-    #         "redirect_uri": "http://127.0.0.1:8000",
-    #         "response_type": "code",
-    #         "scope": "https://www.googleapis.com/auth/drive",
-    #         "access_type": "offline",
-    #     }
-    #     code = "4/0AY0e-g5asI03WpGd_j_30E_aMQ1-_XXXXXNcKAel35qh2AjkGGBgAz9_zPXiyzHdw_XXXX"
-    #     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #     Authenticator._handle_user_prompt = Mock(return_value=(client_socket, code))
-    #     url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(url_keys)
-    #     result = Authenticator._handle_user_prompt(url)
-    #     self.assertIsInstance(result[0], socket.socket)
-    #     self.assertIsInstance(result[1], str)
-    #     LocalServer.handle.assert_called_once_with(url)
-
     def test_get_gdrive_token_first_time(self):
         """
         Test GDriveAuth.authenticate method when user have not operated with
