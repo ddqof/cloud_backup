@@ -33,9 +33,11 @@ class GDrive:
             ApiResponseException: an error occurred accessing API
         """
         file_data = {"alt": "media"}
-        r = requests.get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                         params=file_data,
-                         headers=self._auth_headers)
+        r = requests.get(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}",
+            params=file_data,
+            headers=self._auth_headers
+        )
         GDrive._check_status(r)
         return r.content
 
@@ -80,8 +82,11 @@ class GDrive:
             "fields": "files(name, mimeType, id), nextPageToken",
             "pageToken": page_token,
         }
-        r = requests.get("https://www.googleapis.com/drive/v3/files",
-                         params=flags, headers=self._auth_headers)
+        r = requests.get(
+            "https://www.googleapis.com/drive/v3/files",
+            params=flags,
+            headers=self._auth_headers
+        )
         GDrive._check_status(r)
         Page = namedtuple("Page", ["files", "next_page_token"])
         r = r.json()
@@ -109,8 +114,11 @@ class GDrive:
             "mimeType": "application/vnd.google-apps.folder",
             "parents": [parent_id] if parent_id else []
         }
-        r = requests.post("https://www.googleapis.com/drive/v3/files",
-                          headers=self._auth_headers, data=json.dumps(metadata))
+        r = requests.post(
+            "https://www.googleapis.com/drive/v3/files",
+            headers=self._auth_headers,
+            data=json.dumps(metadata)
+        )
         GDrive._check_status(r)
         return r.json()["id"]
 
@@ -126,11 +134,16 @@ class GDrive:
             ApiResponseException: an error occurred accessing API.
         """
         if permanently:
-            r = requests.request("DELETE", f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                                 headers=self._auth_headers)
+            r = requests.request(
+                "DELETE",
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                headers=self._auth_headers
+            )
         else:
-            r = requests.post(f"https://www.googleapis.com/drive/v2/files/{file_id}/trash",
-                              headers=self._auth_headers)
+            r = requests.post(
+                f"https://www.googleapis.com/drive/v2/files/{file_id}/trash",
+                headers=self._auth_headers
+            )
         GDrive._check_status(r)
 
     def _empty_trash(self) -> None:
@@ -140,8 +153,11 @@ class GDrive:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        r = requests.request("DELETE", "https://www.googleapis.com/drive/v3/files/trash",
-                             headers=self._auth_headers)
+        r = requests.request(
+            "DELETE",
+            "https://www.googleapis.com/drive/v3/files/trash",
+            headers=self._auth_headers
+        )
         GDrive._check_status(r)
 
     def get_upload_link(self, file_path, parent_id) -> str:
@@ -167,8 +183,11 @@ class GDrive:
         if parent_id is not None:
             metadata["parents"] = [parent_id]
         metadata = json.dumps(metadata)
-        r = requests.post("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
-                          headers=headers, data=metadata)
+        r = requests.post(
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+            headers=headers,
+            data=metadata
+        )
         GDrive._check_status(r)
         return r.headers["location"]
 

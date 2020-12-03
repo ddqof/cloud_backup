@@ -117,7 +117,10 @@ class Authenticator:
         Returns:
             Json response from Google Drive API
         """
-        return requests.post("https://oauth2.googleapis.com/token", data=data).json()
+        return requests.post(
+            "https://oauth2.googleapis.com/token",
+            data=data
+        ).json()
 
     def get_yadisk_token(self, token_file_path=DEFAULT_YANDEX_TOKEN_PATH):
         """
@@ -158,4 +161,7 @@ class Authenticator:
         Returns:
             Json response from Yandex Disk API
         """
-        return requests.post("https://oauth.yandex.ru/token", data=data).json()
+        return requests.post(
+            "https://oauth.yandex.ru/token",
+            data=data
+        ).json()

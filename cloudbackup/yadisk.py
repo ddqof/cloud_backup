@@ -50,7 +50,10 @@ class YaDisk:
         Page = namedtuple("Page", ["file_info", "files"])
         json_r = r.json()
         try:
-            return Page(YaDiskFile(json_r), [YaDiskFile(file) for file in json_r["_embedded"]["items"]])
+            return Page(
+                YaDiskFile(json_r),
+                [YaDiskFile(file) for file in json_r["_embedded"]["items"]]
+            )
         except KeyError:
             return Page(YaDiskFile(json_r), [])
 
@@ -73,10 +76,16 @@ class YaDisk:
             "limit": limit,
             "offset": offset,
         }
-        r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/files", params=keys,
-                         headers=self._auth_headers)
+        r = requests.get(
+            "https://cloud-api.yandex.net/v1/disk/resources/files",
+            params=keys,
+            headers=self._auth_headers
+        )
         if r.status_code not in {200}:
-            raise ApiResponseException(r.status_code, r.json()["description"])
+            raise ApiResponseException(
+                r.status_code,
+                r.json()["description"]
+            )
         return [YaDiskFile(file) for file in r.json()["items"]]
 
     def download(self, path) -> bytes:
@@ -95,17 +104,25 @@ class YaDisk:
              provided `path` argument.
         """
         YaDisk._check_path(path)
-        request_for_link = requests.get("https://cloud-api.yandex.net/v1/disk/resources/download",
-                                        headers=self._auth_headers,
-                                        params={"path": path})
+        request_for_link = requests.get(
+            "https://cloud-api.yandex.net/v1/disk/resources/download",
+            headers=self._auth_headers,
+            params={"path": path}
+        )
         if request_for_link.status_code not in {200}:
-            raise ApiResponseException(request_for_link.status_code, request_for_link.json()["description"])
+            raise ApiResponseException(
+                request_for_link.status_code,
+                request_for_link.json()["description"]
+            )
         request_for_link = request_for_link.json()
         if request_for_link["href"] == "":
             raise FileIsNotDownloadableException(path)
         download_request = requests.get(request_for_link["href"])
         if download_request.status_code not in {200}:
-            raise ApiResponseException(download_request.status_code, download_request.json()["description"])
+            raise ApiResponseException(
+                download_request.status_code,
+                download_request.json()["description"]
+            )
         return download_request.content
 
     def get_upload_link(self, destination) -> str:
@@ -123,9 +140,11 @@ class YaDisk:
             ApiResponseException: an error occurred accessing API.
         """
         YaDisk._check_path(destination)
-        r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/upload",
-                         params={"path": destination},
-                         headers=self._auth_headers)
+        r = requests.get(
+            "https://cloud-api.yandex.net/v1/disk/resources/upload",
+            params={"path": destination},
+            headers=self._auth_headers
+        )
         if r.status_code not in {200}:
             raise ApiResponseException(r.status_code, r.json()["description"])
         return r.json()["href"]
@@ -158,8 +177,11 @@ class YaDisk:
         """
         YaDisk._check_path(destination)
         path = {"path": destination}
-        r = requests.put("https://cloud-api.yandex.net/v1/disk/resources", params=path,
-                         headers=self._auth_headers)
+        r = requests.put(
+            "https://cloud-api.yandex.net/v1/disk/resources",
+            params=path,
+            headers=self._auth_headers
+        )
         if r.status_code not in {201}:
             raise ApiResponseException(r.status_code, r.json()["description"])
 
@@ -181,9 +203,12 @@ class YaDisk:
             "path": path,
             "permanently": permanently,
         }
-        r = requests.request("DELETE", "https://cloud-api.yandex.net/v1/disk/resources",
-                             params=flags,
-                             headers=self._auth_headers)
+        r = requests.request(
+            "DELETE",
+            "https://cloud-api.yandex.net/v1/disk/resources",
+            params=flags,
+            headers=self._auth_headers
+        )
         if r.status_code not in {202, 204}:
             raise ApiResponseException(r.status_code, r.json()["description"])
 
