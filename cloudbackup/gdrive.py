@@ -67,7 +67,8 @@ class GDrive:
         """
         if dir_id:
             if owners:
-                query = f"trashed={trashed} and '{dir_id}' in parents and '{','.join(owners)}' in owners"
+                query = (f"trashed={trashed} and '{dir_id}' in parents and"
+                         f" '{','.join(owners)}' in owners")
             else:
                 query = f"trashed={trashed} and '{dir_id}' in parents"
         else:

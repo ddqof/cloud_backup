@@ -1,13 +1,11 @@
 import datetime
 import os
-import socket
 import pickle
 from callee import Contains
 from cloudbackup._defaults import TEST_GOOGLE_TOKEN_PATH, TEST_YANDEX_TOKEN_PATH
 from cloudbackup._authenticator import Authenticator
 from unittest import TestCase
 from unittest.mock import Mock
-from urllib.parse import urlencode
 
 
 class TestAuthenticator(TestCase):
