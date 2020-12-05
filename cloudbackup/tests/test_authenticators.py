@@ -62,7 +62,7 @@ class TestAuthenticator(TestCase):
         self.assertEqual(get_tokens_args["grant_type"], "authorization_code")
         self.assertEqual(get_tokens_args["redirect_uri"], "http://127.0.0.1:8000")
         self.check_dump_token_data(token_data, TEST_GOOGLE_TOKEN_PATH)
-        self.assertIsInstance(access_token, str)
+        self.assertEqual(token_data["access_token"], access_token)
 
     def test_gdrive_token_extracting_correctly_from_dump(self):
         """

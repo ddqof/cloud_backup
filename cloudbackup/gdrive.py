@@ -41,8 +41,15 @@ class GDrive:
         GDrive._check_status(r)
         return r.content
 
-    def lsdir(self, dir_id=None, trashed=False, owners=None, page_size=20, page_token=None,
-              order_by="modifiedTime") -> namedtuple("Page", ["files", "next_page_token"]):
+    def lsdir(
+            self,
+            dir_id=None,
+            trashed=False,
+            owners=None,
+            page_size=20,
+            page_token=None,
+            order_by="modifiedTime"
+    ) -> namedtuple("Page", ["files", "next_page_token"]):
         """
         Make request to get list of `page_size` size consists of files and directories in
         directory with specified dir_id.
