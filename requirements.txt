@@ -2,3 +2,4 @@ requests
 colorama
 callee
 responses
+pytest
