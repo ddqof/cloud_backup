@@ -16,7 +16,13 @@ class YaDisk:
             "Authorization": Authenticator().get_yadisk_token()
         }
 
-    def lsdir(self, path, sort="modified", limit=20, offset=0) -> namedtuple("Page", ["file_info", "files"]):
+    def lsdir(
+            self,
+            path,
+            sort="modified",
+            limit=20,
+            offset=0
+    ) -> namedtuple("Page", ["file_info", "files"]):
         """
         Make request to get directory or file meta-information.
 
@@ -37,16 +43,23 @@ class YaDisk:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
+        YaDisk._check_path(path)
         keys = {
             "path": path,
             "sort": sort,
             "limit": limit,
             "offset": offset,
         }
-        r = requests.get("https://cloud-api.yandex.net/v1/disk/resources/", params=keys,
-                         headers=self._auth_headers)
-        if r.status_code not in {200}:
-            raise ApiResponseException(r.status_code, r.json()["description"])
+        r = requests.get(
+            "https://cloud-api.yandex.net/v1/disk/resources/",
+            params=keys,
+            headers=self._auth_headers
+        )
+        if r.status_code != 200:
+            raise ApiResponseException(
+                r.status_code,
+                r.json()["description"]
+            )
         Page = namedtuple("Page", ["file_info", "files"])
         json_r = r.json()
         try:
@@ -81,14 +94,31 @@ class YaDisk:
             params=keys,
             headers=self._auth_headers
         )
-        if r.status_code not in {200}:
+        if r.status_code != 200:
             raise ApiResponseException(
                 r.status_code,
                 r.json()["description"]
             )
         return [YaDiskFile(file) for file in r.json()["items"]]
 
-    def download(self, path) -> bytes:
+    def get_download_link(self, path):
+        YaDisk._check_path(path)
+        request_for_link = requests.get(
+            "https://cloud-api.yandex.net/v1/disk/resources/download",
+            headers=self._auth_headers,
+            params={"path": path}
+        )
+        if request_for_link.status_code != 200:
+            raise ApiResponseException(
+                request_for_link.status_code,
+                request_for_link.json()["description"]
+            )
+        request_for_link = request_for_link.json()
+        if request_for_link["href"] == "":
+            raise FileIsNotDownloadableException(path)
+        return request_for_link["href"]
+
+    def download(self, download_link) -> bytes:
         """
         Make a request for downloading file from YaDisk storage.
 
@@ -103,22 +133,8 @@ class YaDisk:
             FileIsNotDownloadable: an error occurred getting link for file with
              provided `path` argument.
         """
-        YaDisk._check_path(path)
-        request_for_link = requests.get(
-            "https://cloud-api.yandex.net/v1/disk/resources/download",
-            headers=self._auth_headers,
-            params={"path": path}
-        )
-        if request_for_link.status_code not in {200}:
-            raise ApiResponseException(
-                request_for_link.status_code,
-                request_for_link.json()["description"]
-            )
-        request_for_link = request_for_link.json()
-        if request_for_link["href"] == "":
-            raise FileIsNotDownloadableException(path)
-        download_request = requests.get(request_for_link["href"])
-        if download_request.status_code not in {200}:
+        download_request = requests.get(download_link)
+        if download_request.status_code != 200:
             raise ApiResponseException(
                 download_request.status_code,
                 download_request.json()["description"]
@@ -145,11 +161,11 @@ class YaDisk:
             params={"path": destination},
             headers=self._auth_headers
         )
-        if r.status_code not in {200}:
+        if r.status_code != 200:
             raise ApiResponseException(r.status_code, r.json()["description"])
         return r.json()["href"]
 
-    def upload_entire_file(self, upload_link, file_data) -> None:
+    def upload_file(self, upload_link, file_data) -> None:
         """
         Upload a entire file by one single request. Before use this method call `get_upload_link`
         and provide upload link this method.
@@ -163,7 +179,10 @@ class YaDisk:
         """
         upload_request = requests.put(upload_link, data=file_data)
         if upload_request.status_code not in {201, 202}:
-            raise ApiResponseException(upload_request.status_code, upload_request.json()["description"])
+            raise ApiResponseException(
+                upload_request.status_code,
+                upload_request.json()["description"]
+            )
 
     def mkdir(self, destination) -> None:
         """
@@ -182,8 +201,11 @@ class YaDisk:
             params=path,
             headers=self._auth_headers
         )
-        if r.status_code not in {201}:
-            raise ApiResponseException(r.status_code, r.json()["description"])
+        if r.status_code != 201:
+            raise ApiResponseException(
+                r.status_code,
+                r.json()["description"]
+            )
 
     def remove(self, path, permanently=False) -> None:
         """
@@ -210,7 +232,10 @@ class YaDisk:
             headers=self._auth_headers
         )
         if r.status_code not in {202, 204}:
-            raise ApiResponseException(r.status_code, r.json()["description"])
+            raise ApiResponseException(
+                r.status_code,
+                r.json()["description"]
+            )
 
     @staticmethod
     def _check_path(path) -> None:

@@ -20,10 +20,9 @@ def gdrive():
         yield GDrive()
 
 
-def _default_req_check(expected_calls_count, responses_obj):
-    assert len(responses_obj.calls) == expected_calls_count
-    assert "Authorization" in responses_obj.calls[0].request.headers
-    assert "Bearer " in responses_obj.calls[0].request.headers["Authorization"]
+def check_auth_headers(headers):
+    assert "Authorization" in headers
+    assert "Bearer " in headers["Authorization"]
 
 
 @responses.activate
@@ -43,7 +42,8 @@ def test_mkdir(gdrive):
         content_type="application/json"
     )
     folder_id = gdrive.mkdir("test")
-    _default_req_check(1, responses)
+    assert len(responses.calls) == 1
+    check_auth_headers(responses.calls[0].request.headers)
     json_req_body = json.loads(responses.calls[0].request.body)
     assert all(key in json_req_body for key in
                ("mimeType", "name", "parents"))
@@ -61,7 +61,8 @@ def test_trash_file(gdrive):
     )
     file_id = "1"
     gdrive.remove(file_id)
-    _default_req_check(1, responses)
+    assert len(responses.calls) == 1
+    check_auth_headers(responses.calls[0].request.headers)
 
 
 @responses.activate
@@ -73,7 +74,8 @@ def test_remove_permanently(gdrive):
     )
     file_id = "1"
     gdrive.remove(file_id, permanently=True)
-    _default_req_check(1, responses)
+    assert len(responses.calls) == 1
+    check_auth_headers(responses.calls[0].request.headers)
 
 
 @responses.activate
@@ -86,7 +88,8 @@ def test_empty_trash(gdrive):
         status=204,
     )
     gdrive._empty_trash()
-    _default_req_check(1, responses)
+    assert len(responses.calls) == 1
+    check_auth_headers(responses.calls[0].request.headers)
     assert responses.calls[0].response.status_code == 204
 
 
@@ -106,7 +109,8 @@ def test_non_dir_id_in_lsdir_query(gdrive):
         body=json.dumps(FULL_LISTED_LSDIR_RESPONSE)
     )
     gdrive.lsdir()
-    _default_req_check(1, responses)
+    assert len(responses.calls) == 1
+    check_auth_headers(responses.calls[0].request.headers)
     assert responses.calls[0].request.params == url_params
     url_params["q"] = "trashed=False and 'me' in owners"
     responses.add(
@@ -117,7 +121,8 @@ def test_non_dir_id_in_lsdir_query(gdrive):
         body=json.dumps(FULL_LISTED_LSDIR_RESPONSE)
     )
     gdrive.lsdir(owners=["me"])
-    _default_req_check(2, responses)
+    assert len(responses.calls) == 2
+    check_auth_headers(responses.calls[1].request.headers)
     assert responses.calls[1].request.params == url_params
 
 
@@ -137,7 +142,8 @@ def test_dir_id_in_lsdir_query(gdrive):
         body=json.dumps(PAGINATED_LSDIR_RESPONSE)
     )
     gdrive.lsdir(dir_id="root", owners=["me"])
-    _default_req_check(1, responses)
+    assert len(responses.calls) == 1
+    check_auth_headers(responses.calls[0].request.headers)
     assert responses.calls[0].request.params == url_params
     url_params["q"] = "trashed=False and 'root' in parents"
     responses.add(
@@ -148,7 +154,8 @@ def test_dir_id_in_lsdir_query(gdrive):
         body=json.dumps(PAGINATED_LSDIR_RESPONSE)
     )
     gdrive.lsdir(dir_id="root")
-    _default_req_check(2, responses)
+    assert len(responses.calls) == 2
+    check_auth_headers(responses.calls[1].request.headers)
     assert responses.calls[1].request.params == url_params
 
 
@@ -172,7 +179,8 @@ def test_paginate_lsdir(gdrive):
         page_size=1,
         page_token="some_page_token"
     )
-    _default_req_check(1, responses)
+    assert len(responses.calls) == 1
+    check_auth_headers(responses.calls[0].request.headers)
     assert responses.calls[0].request.params == url_params
 
 
@@ -237,7 +245,8 @@ def test_download(gdrive):
         content_type="application/json",
     )
     result = gdrive.download("1")
-    _default_req_check(1, responses)
+    assert len(responses.calls) == 1
+    check_auth_headers(responses.calls[0].request.headers)
     assert responses.calls[0].request.params == {"alt": "media"}
     assert responses.calls[0].response.content == b"one two three\n"
     assert result == responses.calls[0].response.content
@@ -253,7 +262,8 @@ def test_get_upload_link(gdrive):
                              "files?uploadType=resumable&upload_id=some_id"}
     )
     link = gdrive.get_upload_link("_gdrive_api_responses.py")
-    _default_req_check(1, responses)
+    assert len(responses.calls) == 1
+    check_auth_headers(responses.calls[0].request.headers)
     assert "X-Upload-Content-Type" in responses.calls[0].request.headers
     assert json.loads(responses.calls[0].request.body) == {
         "name": "_gdrive_api_responses.py",
@@ -276,4 +286,4 @@ def test_upload_file(gdrive):
     gdrive.upload_file(upload_link, b"test")
     assert len(responses.calls) == 1
     assert responses.calls[0].request.url == upload_link
-
+    assert responses.calls[0].request.body == b"test"

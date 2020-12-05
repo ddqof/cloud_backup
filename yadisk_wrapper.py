@@ -137,6 +137,6 @@ class YaDiskWrapper:
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
         else:
             print(download_msg)
-            file_content = self._yadisk.download(remote_path)
+            download_link = self._yadisk.get_download_link(remote_path)
             with open(dl_path, "wb+") as f:
-                f.write(file_content)
+                f.write(self._yadisk.download(download_link))

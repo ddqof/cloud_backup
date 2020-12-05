@@ -16,7 +16,7 @@ class IncorrectPathException(Exception):
     """
 
     def __init__(self, path):
-        self.message = f"Path: {path} must not include a `:` character."
+        self.message = f"Path: {path} must not include any `:` characters."
         super().__init__(self.message)
 
 
