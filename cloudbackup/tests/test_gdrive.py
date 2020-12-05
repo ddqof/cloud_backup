@@ -5,8 +5,8 @@ from urllib.parse import urlencode
 import responses
 from cloudbackup.gdrive import GDrive
 from cloudbackup.file_objects import GDriveFile
-from cloudbackup.tests.gdrive_api_responses import (
-    MKDIR_RESPONSE,
+from cloudbackup.tests._gdrive_api_responses import (
+    OBJECT_CREATED_RESPONSE,
     FULL_LISTED_LSDIR_RESPONSE,
     PAGINATED_LSDIR_RESPONSE
 )
@@ -20,25 +20,18 @@ def gdrive():
         yield GDrive()
 
 
-def _default_req_check(responses_obj):
-    assert len(responses_obj.calls) == 1
+def _default_req_check(expected_calls_count, responses_obj):
+    assert len(responses_obj.calls) == expected_calls_count
     assert "Authorization" in responses_obj.calls[0].request.headers
     assert "Bearer " in responses_obj.calls[0].request.headers["Authorization"]
-
-
-def _check_namedtuple_instance(obj, fields):
-    assert isinstance(obj, tuple)
-    assert hasattr(obj, "_fields")
-    #  fields is attribute only of namedtuple
-    assert fields[0] == obj._fields[0]
-    assert fields[1] == obj._fields[1]
 
 
 @responses.activate
 def test_mkdir(gdrive):
     def request_callback(request):
         data = json.loads(request.body)
-        resp_body = MKDIR_RESPONSE
+        resp_body = OBJECT_CREATED_RESPONSE
+        resp_body["mimeType"] = "application/vnd.google-apps.folder"
         resp_body["id"] = 1
         resp_body["name"] = data["name"]
         return 200, {}, json.dumps(resp_body)
@@ -50,10 +43,11 @@ def test_mkdir(gdrive):
         content_type="application/json"
     )
     folder_id = gdrive.mkdir("test")
-    _default_req_check(responses)
+    _default_req_check(1, responses)
     json_req_body = json.loads(responses.calls[0].request.body)
     assert all(key in json_req_body for key in
                ("mimeType", "name", "parents"))
+    assert json_req_body["mimeType"] == "application/vnd.google-apps.folder"
     assert json_req_body["parents"] == []
     assert folder_id == json.loads(responses.calls[0].response.text)["id"]
 
@@ -67,7 +61,7 @@ def test_trash_file(gdrive):
     )
     file_id = "1"
     gdrive.remove(file_id)
-    _default_req_check(responses)
+    _default_req_check(1, responses)
 
 
 @responses.activate
@@ -79,7 +73,7 @@ def test_remove_permanently(gdrive):
     )
     file_id = "1"
     gdrive.remove(file_id, permanently=True)
-    _default_req_check(responses)
+    _default_req_check(1, responses)
 
 
 @responses.activate
@@ -92,13 +86,13 @@ def test_empty_trash(gdrive):
         status=204,
     )
     gdrive._empty_trash()
-    _default_req_check(responses)
+    _default_req_check(1, responses)
     assert responses.calls[0].response.status_code == 204
 
 
 @responses.activate
-def test_lsdir_with_def_args(gdrive):
-    def_url_params = {
+def test_non_dir_id_in_lsdir_query(gdrive):
+    url_params = {
         "orderBy": "modifiedTime",
         "fields": "files(name, mimeType, id), nextPageToken",
         "pageSize": "20",
@@ -106,23 +100,56 @@ def test_lsdir_with_def_args(gdrive):
     }
     responses.add(
         responses.GET,
-        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(def_url_params)}",
+        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(url_params)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(FULL_LISTED_LSDIR_RESPONSE)
     )
-    page = gdrive.lsdir()
-    _default_req_check(responses)
-    assert responses.calls[0].request.params == def_url_params
-    _check_namedtuple_instance(page, ["files", "next_page_token"])
-    assert isinstance(page.files, list)
-    files = [
-        GDriveFile(FULL_LISTED_LSDIR_RESPONSE["files"][0]),
-        GDriveFile(FULL_LISTED_LSDIR_RESPONSE["files"][1]),
-        GDriveFile(FULL_LISTED_LSDIR_RESPONSE["files"][2])
-    ]
-    assert page.files == files
-    assert page.next_page_token is None
+    gdrive.lsdir()
+    _default_req_check(1, responses)
+    assert responses.calls[0].request.params == url_params
+    url_params["q"] = "trashed=False and 'me' in owners"
+    responses.add(
+        responses.GET,
+        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(url_params)}",
+        content_type="application/json",
+        match_querystring=True,
+        body=json.dumps(FULL_LISTED_LSDIR_RESPONSE)
+    )
+    gdrive.lsdir(owners=["me"])
+    _default_req_check(2, responses)
+    assert responses.calls[1].request.params == url_params
+
+
+@responses.activate
+def test_dir_id_in_lsdir_query(gdrive):
+    url_params = {
+        "orderBy": "modifiedTime",
+        "fields": "files(name, mimeType, id), nextPageToken",
+        "pageSize": "20",
+        "q": "trashed=False and 'root' in parents and 'me' in owners",
+    }
+    responses.add(
+        responses.GET,
+        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(url_params)}",
+        content_type="application/json",
+        match_querystring=True,
+        body=json.dumps(PAGINATED_LSDIR_RESPONSE)
+    )
+    gdrive.lsdir(dir_id="root", owners=["me"])
+    _default_req_check(1, responses)
+    assert responses.calls[0].request.params == url_params
+    url_params["q"] = "trashed=False and 'root' in parents"
+    responses.add(
+        responses.GET,
+        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(url_params)}",
+        content_type="application/json",
+        match_querystring=True,
+        body=json.dumps(PAGINATED_LSDIR_RESPONSE)
+    )
+    gdrive.lsdir(dir_id="root")
+    _default_req_check(2, responses)
+    assert responses.calls[1].request.params == url_params
 
 
 @responses.activate
@@ -141,14 +168,112 @@ def test_paginate_lsdir(gdrive):
         match_querystring=True,
         body=json.dumps(PAGINATED_LSDIR_RESPONSE)
     )
-    page = gdrive.lsdir(
+    gdrive.lsdir(
         page_size=1,
         page_token="some_page_token"
     )
-    _default_req_check(responses)
+    _default_req_check(1, responses)
     assert responses.calls[0].request.params == url_params
+
+
+@responses.activate
+def test_lsdir_returns_page(gdrive):
+    url_params = {
+        "orderBy": "modifiedTime",
+        "fields": "files(name, mimeType, id), nextPageToken",
+        "pageSize": "20",
+        "q": "trashed=False",
+    }
+    responses.add(
+        responses.GET,
+        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(url_params)}",
+        content_type="application/json",
+        match_querystring=True,
+        body=json.dumps(FULL_LISTED_LSDIR_RESPONSE)
+    )
+    page = gdrive.lsdir()
     _check_namedtuple_instance(page, ["files", "next_page_token"])
     assert isinstance(page.files, list)
-    assert page.next_page_token is not None
-    assert page.next_page_token == "some_next_page_token"
+    files = [
+        GDriveFile(FULL_LISTED_LSDIR_RESPONSE["files"][0]),
+        GDriveFile(FULL_LISTED_LSDIR_RESPONSE["files"][1]),
+        GDriveFile(FULL_LISTED_LSDIR_RESPONSE["files"][2])
+    ]
+    assert page.files == files
+    assert page.next_page_token is None
+    responses.replace(
+        responses.GET,
+        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(url_params)}",
+        content_type="application/json",
+        match_querystring=True,
+        body=json.dumps(PAGINATED_LSDIR_RESPONSE)
+    )
+    other_page = gdrive.lsdir()
+    _check_namedtuple_instance(other_page, ["files", "next_page_token"])
+    assert isinstance(other_page.files, list)
+    files = [
+        GDriveFile(PAGINATED_LSDIR_RESPONSE["files"][0]),
+        GDriveFile(PAGINATED_LSDIR_RESPONSE["files"][1]),
+    ]
+    assert other_page.files == files
+    assert other_page.next_page_token == "some_next_page_token"
+
+
+def _check_namedtuple_instance(obj, fields):
+    assert isinstance(obj, tuple)
+    assert hasattr(obj, "_fields")
+    #  fields is attribute only of namedtuple
+    assert fields[0] == obj._fields[0]
+    assert fields[1] == obj._fields[1]
+
+
+@responses.activate
+def test_download(gdrive):
+    responses.add(
+        responses.GET,
+        url="https://www.googleapis.com/drive/v3/files/1?alt=media",
+        match_querystring=True,
+        body="one two three\n",
+        content_type="application/json",
+    )
+    result = gdrive.download("1")
+    _default_req_check(1, responses)
+    assert responses.calls[0].request.params == {"alt": "media"}
+    assert responses.calls[0].response.content == b"one two three\n"
+    assert result == responses.calls[0].response.content
+
+
+@responses.activate
+def test_get_upload_link(gdrive):
+    responses.add(
+        responses.POST,
+        url="https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+        content_type="application/json",
+        headers={"Location": "https://www.googleapis.com/upload/drive/v3/"
+                             "files?uploadType=resumable&upload_id=some_id"}
+    )
+    link = gdrive.get_upload_link("_gdrive_api_responses.py")
+    _default_req_check(1, responses)
+    assert "X-Upload-Content-Type" in responses.calls[0].request.headers
+    assert json.loads(responses.calls[0].request.body) == {
+        "name": "_gdrive_api_responses.py",
+        "parents": ["root"]
+    }
+    assert "Location" in responses.calls[0].response.headers
+    assert responses.calls[0].response.headers != ""
+    assert link == responses.calls[0].response.headers["Location"]
+
+
+@responses.activate
+def test_upload_file(gdrive):
+    upload_link = "https://www.googleapis.com/upload/drive/v3/" \
+                  "files?uploadType=resumable&upload_id=1"
+    responses.add(
+        responses.PUT,
+        url=upload_link,
+        content_type="application/json",
+    )
+    gdrive.upload_file(upload_link, b"test")
+    assert len(responses.calls) == 1
+    assert responses.calls[0].request.url == upload_link
 

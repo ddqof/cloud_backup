@@ -32,9 +32,9 @@ PAGINATED_LSDIR_RESPONSE = {
   },
  ]
 }
-MKDIR_RESPONSE = {
+OBJECT_CREATED_RESPONSE = {
  "kind": "drive#file",
  "id": "",
  "name": "",
- "mimeType": "application/vnd.google-apps.folder"
+ "mimeType": ""
 }

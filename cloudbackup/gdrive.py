@@ -168,7 +168,7 @@ class GDrive:
         )
         GDrive._check_status(r)
 
-    def get_upload_link(self, file_path, parent_id) -> str:
+    def get_upload_link(self, file_path, parent_id="root") -> str:
         """
         Send request to Google Drive API for getting link for file upload.
 
@@ -199,7 +199,7 @@ class GDrive:
         GDrive._check_status(r)
         return r.headers["location"]
 
-    def upload_entire_file(self, upload_link, file_data) -> None:
+    def upload_file(self, upload_link, file_data) -> None:
         """
         Upload full file data to the Google Drive by one single request
         using upload link received from `get_upload_link` method.

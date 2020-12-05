@@ -115,7 +115,7 @@ def put_file(storage: GDrive or YaDisk, local_path, destination=None) -> None:
     print(UPLOADING_FILE_MSG.format(file_name=local_path))
     with open(local_path, "rb") as f:
         file_data = f.read()
-    storage.upload_entire_file(link, file_data)
+    storage.upload_file(link, file_data)
 
 
 def print_remote_file(file_name, file_id, file_type) -> None:
