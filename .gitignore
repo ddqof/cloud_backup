@@ -1,4 +1,6 @@
 .idea
 __pycache__
+*.pytest_cache
+.coverage
 cloudbackup/service/google/google_token.*
 cloudbackup/service/yandex/yandex_token.*
