@@ -51,23 +51,29 @@ class GDrive:
             order_by="modifiedTime"
     ) -> namedtuple("Page", ["files", "next_page_token"]):
         """
-        Make request to get list of `page_size` size consists of files and directories in
-        directory with specified dir_id.
+        Make request to get list of `page_size` size consists of
+        files and directories in directory with specified dir_id.
 
         Args:
-            dir_id: If None then list all files, else list files in a directory with given id
+            dir_id: If None then list all files, else list files in a
+             directory with given id.
             trashed: Optional, whether to list files from the trash
             owners: Optional; list of files owners
-            page_size: Optional; files count on one page (set value from 1 to 1000)
+            page_size: Optional; files count on one page
+             (set value from 1 to 1000)
             page_token: Optional;, token of the next page
-            order_by: Optional; Sort key. Valid keys are: 'createdTime', 'folder' (folders will show first in the list),
-              'modifiedTime', 'name', 'recency', 'viewedByMeTime'. Each key sorts ascending by default,
-               but may be reversed with the 'desc' modifier. For example: modifiedTime desc.
+            order_by: Optional; Sort key. Valid keys are:
+             'createdTime', 'folder', 'modifiedTime', 'name',
+             'recency', 'viewedByMeTime'. Each key sorts ascending by default,
+             but may be reversed with the 'desc' modifier.
+             For example: 'modifiedTime desc'.
 
         Returns:
-            |namedtuple| Page("files", "next_page_token"). `files` field contains files on this page.
-            Use 'next_page_token' for continuing a previous list request on the next page.
-            If next page token is None, then there are no more pages.
+            |namedtuple| Page("files", "next_page_token").
+             `files` field contains files on this page.
+             Use 'next_page_token' for continuing a previous list
+             request on the next page.
+             If next page token is None, then there are no more pages.
 
         Raises:
             ApiResponseException: an error occurred accessing API
@@ -99,9 +105,15 @@ class GDrive:
         Page = namedtuple("Page", ["files", "next_page_token"])
         r = r.json()
         if "nextPageToken" in r:
-            return Page([GDriveFile(file) for file in r["files"]], r["nextPageToken"])
+            return Page(
+                [GDriveFile(file) for file in r["files"]],
+                r["nextPageToken"]
+            )
         else:
-            return Page([GDriveFile(file) for file in r["files"]], None)
+            return Page(
+                [GDriveFile(file) for file in r["files"]],
+                None
+            )
 
     def mkdir(self, name, parent_id=None) -> str:
         """
@@ -136,7 +148,8 @@ class GDrive:
 
         Args:
             file_id: Id of file that should be deleted.
-            permanently: Optional; whether to delete the file permanently or move to the trash.
+            permanently: Optional; whether to delete the file
+             permanently or move to the trash.
 
         Raises:
             ApiResponseException: an error occurred accessing API.
@@ -192,7 +205,8 @@ class GDrive:
             metadata["parents"] = [parent_id]
         metadata = json.dumps(metadata)
         r = requests.post(
-            "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+            "https://www.googleapis.com/upload/drive/v3/files?"
+            "uploadType=resumable",
             headers=headers,
             data=metadata
         )
@@ -214,34 +228,48 @@ class GDrive:
         r = requests.put(upload_link, data=file_data)
         GDrive._check_status(r)
 
-    def upload_chunk(self, link, file_data, uploaded_size, chunk_size, file_size) -> \
-            namedtuple("UploadStatus", ["code", "received"]):
+    def upload_chunk(
+            self,
+            link,
+            file_data,
+            uploaded_size,
+            chunk_size,
+            file_size
+    ) -> namedtuple("UploadStatus", ["code", "received"]):
         """
-        Upload chunk of file to the Google Drive using upload link received from
-        `get_upload_link` method.
+        Upload chunk of file to the Google Drive using upload link
+         from `get_upload_link` method.
 
         Returns:
-            |namedtuple| UploadStatus("code", "received"). If code equals 200 upload is completed, if 308
-             then server received chunk and you can proceed uploading another chunks. `received` field
+            |namedtuple| UploadStatus("code", "received"). If code equals 200
+             upload is completed, if 308 then server received chunk and you
+             can proceed uploading another chunks. `received` field
              contains bytes that was received successfully by Google Drive API.
 
         Raises:
             ApiResponseException: If API response has unsuccessful status code.
         """
+        bytes_range = (f"{str(uploaded_size)}-"
+                       f"{str(uploaded_size + chunk_size - 1)}/"
+                       f"{file_size}")
         chunk_info = {
             "Content-Length": chunk_size,
-            "Content-Range": f"bytes {str(uploaded_size)}-{str(uploaded_size + chunk_size - 1)}/{file_size}"
+            "Content-Range": f"bytes {bytes_range}"
         }
         r = requests.put(link, data=file_data, headers=chunk_info)
         GDrive._check_status(r)
         UploadStatus = namedtuple("UploadStatus", ["code", "received"])
-        return UploadStatus(r.status_code, int(r.headers["range"].split("-")[1]) + 1)
+        return UploadStatus(
+            r.status_code,
+            int(r.headers["range"].split("-")[1]) + 1
+        )
         # range header looks like "bytes=0-n", where n - received bytes
 
     @staticmethod
     def _check_status(api_response) -> None:
         """
-        This method used for checking the response status code after every API query.
+        This method used for checking the response status code
+        after every API query.
 
         Params:
             api_response: response object from `requests` library.
@@ -250,4 +278,7 @@ class GDrive:
             ApiResponseException: If API response has unsuccessful status code.
         """
         if api_response.status_code in {400, 401, 403, 404, 429, 500}:
-            raise ApiResponseException(api_response.status_code, api_response.json()["error"]["message"])
+            raise ApiResponseException(
+                api_response.status_code,
+                api_response.json()["error"]["message"]
+            )

@@ -31,31 +31,39 @@ class YaDiskWrapper:
         if path is None:
             limit, all_files = 1000, []
             while True:
-                page_files = self._yadisk.list_files(limit=limit,
-                                                     sort=YADISK_SORT_KEYS[order_key],
-                                                     offset=offset)
+                page_files = self._yadisk.list_files(
+                    limit=limit,
+                    sort=YADISK_SORT_KEYS[order_key],
+                    offset=offset
+                )
                 if page_files:
                     all_files.extend(page_files)
                     offset += limit
                 else:
                     break
             for file in all_files:
-                common_operations.print_remote_file(file_name=file.name,
-                                                    file_id=file.path,
-                                                    file_type=file.type)
+                common_operations.print_remote_file(
+                    file_name=file.name,
+                    file_id=file.path,
+                    file_type=file.type
+                )
         else:
             page = self._yadisk.lsdir(path,
                                       offset=offset,
                                       sort=YADISK_SORT_KEYS[order_key])
             while True:
                 for file in page.files:
-                    common_operations.print_remote_file(file_name=file.name,
-                                                        file_id=file.path,
-                                                        file_type=file.type)
+                    common_operations.print_remote_file(
+                        file_name=file.name,
+                        file_id=file.path,
+                        file_type=file.type
+                    )
                 offset += 20
-                page = self._yadisk.lsdir(path,
-                                          offset=offset,
-                                          sort=YADISK_SORT_KEYS[order_key])
+                page = self._yadisk.lsdir(
+                    path,
+                    offset=offset,
+                    sort=YADISK_SORT_KEYS[order_key]
+                )
                 if not page.files:
                     break
                 user_confirm = input(LIST_NEXT_PAGE_MSG)
@@ -95,11 +103,17 @@ class YaDiskWrapper:
                     continue
                 for filename in filenames:
                     current_ul_path = os.path.join(root, filename)
-                    common_operations.put_file(storage=self._yadisk,
-                                               local_path=current_ul_path,
-                                               destination=f"{destination}/{filename}")
+                    common_operations.put_file(
+                        storage=self._yadisk,
+                        local_path=current_ul_path,
+                        destination=f"{destination}/{filename}"
+                    )
         else:
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_abs_path)
+            raise FileNotFoundError(
+                errno.ENOENT,
+                os.strerror(errno.ENOENT),
+                file_abs_path
+            )
 
     def remove(self, path, permanently=False) -> None:
         remote_file = self._yadisk.lsdir(path).file_info
@@ -109,7 +123,12 @@ class YaDiskWrapper:
                                  file_type=remote_file.type,
                                  permanently=permanently)
 
-    def download(self, remote_path, local_destination=None, overwrite=False) -> None:
+    def download(
+            self,
+            remote_path,
+            local_destination=None,
+            overwrite=False
+    ) -> None:
         #  rebuild path for platform independence
         if remote_path.startswith("disk:/"):
             path_chunks = remote_path[5:].split("/")
@@ -126,7 +145,9 @@ class YaDiskWrapper:
         dl_path = os.path.abspath(dl_path)
         if remote_file_object.type == "dir":
             dl_path += ".zip"
-            download_msg = DOWNLOADING_DIR_AS_ZIP_MSG.format(dir_name=remote_path, file_name=dl_path)
+            download_msg = DOWNLOADING_DIR_AS_ZIP_MSG.format(
+                dir_name=remote_path, file_name=dl_path
+            )
         elif remote_file_object.type == "file":
             download_msg = DOWNLOADING_FILE_MSG.format(file_name=dl_path)
         else:
@@ -138,7 +159,11 @@ class YaDiskWrapper:
         if overwrite and os.path.exists(dl_path):
             common_operations.print_overwrite_dialog(dl_path)
         if not overwrite and os.path.exists(dl_path):
-            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
+            raise FileExistsError(
+                errno.EEXIST,
+                os.strerror(errno.EEXIST),
+                dl_path
+            )
         else:
             print(download_msg)
             download_link = self._yadisk.get_download_link(remote_path)

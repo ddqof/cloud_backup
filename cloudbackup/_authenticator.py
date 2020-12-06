@@ -79,10 +79,13 @@ class Authenticator:
                     "grant_type": "refresh_token",
                     "refresh_token": token_data["refresh_token"]
                 }
-                api_token_response = self._get_gdrive_tokens_from_api(exchange_keys)
+                api_token_response = self._get_gdrive_tokens_from_api(
+                    exchange_keys)
                 token_data["access_token"] = api_token_response["access_token"]
-                expire_seconds = datetime.timedelta(0, api_token_response["expires_in"] - INACCURACY_SECONDS)
-                token_data["expire_time"] = datetime.datetime.now() + expire_seconds
+                expire_seconds = datetime.timedelta(
+                    0,  api_token_response["expires_in"] - INACCURACY_SECONDS)
+                token_data["expire_time"] = (
+                        datetime.datetime.now() + expire_seconds)
                 with open(token_file_path, "wb") as token_file:
                     pickle.dump(token_data, token_file)
             return token_data["access_token"]
@@ -102,18 +105,21 @@ class Authenticator:
                 "grant_type": "authorization_code",
                 "redirect_uri": f"{REDIRECT_HOST}:{str(REDIRECT_PORT)}",
             }
-            api_token_response = self._get_gdrive_tokens_from_api(exchange_keys)
+            api_token_response = self._get_gdrive_tokens_from_api(
+                exchange_keys)
             self._dump_token_data(api_token_response, token_file_path)
             self._send_successful_message()
             return api_token_response["access_token"]
 
     def _get_gdrive_tokens_from_api(self, data):
         """
-        Send a request to Google Drive API for getting access and refresh token or
-        can be used for updating access token by sending refresh token
+        Send a request to Google Drive API for getting access and
+        refresh token or can be used for updating access token by
+        sending refresh token
 
         Params:
-            data: dict with application data that Google give when you create app
+            data: dict with application data that Google give when
+            you create app.
         Returns:
             Json response from Google Drive API
         """
@@ -139,25 +145,29 @@ class Authenticator:
                 "response_type": "code",
                 "client_id": credentials["client_id"]
             }
-            code = self._handle_user_prompt(YADISK_OAUTH_LINK + urlencode(keys))
+            code = self._handle_user_prompt(
+                YADISK_OAUTH_LINK + urlencode(keys))
             exchange_keys = {
                 "grant_type": "authorization_code",
                 "code": code,
                 "client_id": credentials["client_id"],
                 "client_secret": credentials["client_secret"]
             }
-            api_token_response = self._get_yadisk_tokens_from_api(exchange_keys)
+            api_token_response = self._get_yadisk_tokens_from_api(
+                exchange_keys)
             self._dump_token_data(api_token_response, token_file_path)
             self._send_successful_message()
             return api_token_response["access_token"]
 
     def _get_yadisk_tokens_from_api(self, data):
         """
-        Send a request to Yandex Disk API for getting access and refresh token or
-        can be used for updating access token by sending refresh token
+        Send a request to Yandex Disk API for getting access and
+        refresh token or can be used for updating access token by
+        sending refresh token
 
         Params:
-            data: dict with application data that Yandex give when you create app
+            data: dict with application data that Yandex give
+            when you create app.
         Returns:
             Json response from Yandex Disk API
         """

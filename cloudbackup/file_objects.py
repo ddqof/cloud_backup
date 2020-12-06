@@ -8,7 +8,8 @@ class YaDiskFile:
         Create file object from JSON response
 
         Params:
-            meta_inf: JSON contains raw file meta-information from YandexDisk API response
+            meta_inf: JSON contains raw file meta-information from
+             YandexDisk API response
         """
         self.name = meta_inf["name"]
         self.created = meta_inf["created"]
@@ -48,7 +49,8 @@ class GDriveFile:
         Create file object from JSON response
 
         Args:
-            meta_inf: JSON contains raw file meta-information from GoogleDrive API response
+            meta_inf: JSON contains raw file meta-information from
+             GoogleDrive API response
         """
         self.id = meta_inf["id"]
         self.name = meta_inf["name"]
