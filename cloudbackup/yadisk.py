@@ -1,7 +1,11 @@
 import requests
 from collections import namedtuple
 from cloudbackup._authenticator import Authenticator
-from cloudbackup.exceptions import ApiResponseException, IncorrectPathException, FileIsNotDownloadableException
+from cloudbackup.exceptions import (
+    ApiResponseException,
+    IncorrectPathException,
+    FileIsNotDownloadableException
+)
 from cloudbackup.file_objects import YaDiskFile
 
 
@@ -27,18 +31,21 @@ class YaDisk:
         Make request to get directory or file meta-information.
 
         Args:
-            path: Directory to list. Examples: 'disk:/path/foo.py', '/path/bar'.
-            sort: Optional; Sort key. Valid keys are: 'name', 'path', 'created', 'modified', 'size'.
-              To sort in reversed order add a hyphen to the parameter value: '-name'.
-            limit: Optional;The number of resources in the folder that should be described in the list.
-            offset: Optional; The number of resources from the top of the list that should be skipped in the response
+            path: Directory to list. Examples: 'disk:/path/foo.py', '/path'.
+            sort: Optional; Sort key. Valid keys are: 'name', 'path', 'size',
+             'modified', 'created'. To sort in reversed order add a hyphen
+              to the parameter value: '-name'.
+            limit: Optional;The number of resources in the folder that should
+             be described in the list.
+            offset: Optional; The number of resources from the top of the list
+             that should be skipped in the response
              (used for paginated output).
 
         Returns:
-            |namedtuple| Page("dir_info", "files"). `dir_info` field contains meta-information
-             of the file or directory itself. `files` contains list of `limit` size
-             contains files of directory. If called for file instead of directory, `files` field
-             will be empty.
+            |namedtuple| Page("dir_info", "files"). `dir_info` field contains
+             meta-information of the file or directory itself. `files` contains
+              list of `limit` size contains files of directory. If called
+               for file instead of directory, `files` field  will be empty.
 
         Raises:
             ApiResponseException: an error occurred accessing API.
@@ -72,17 +79,21 @@ class YaDisk:
 
     def list_files(self, sort="name", limit=20, offset=0) -> list:
         """
-        Make request to get list of limited size consists of files on YandexDisk excluding directories.
+        Make request to get list of limited size consists of files on
+         YandexDisk excluding directories.
 
         Args:
-            sort: Sort key. Valid keys are: 'name', 'path', 'created', 'modified', 'size'.
-              To sort in reversed order add a hyphen to the parameter value: '-name'.
-            limit: The number of resources in the folder that should be described in the list.
-            offset: The number of resources from the top of the list that should be skipped in the response
-             (used for paginated output).
+            sort: Sort key. Valid keys are: 'name', 'path', 'created',
+             'modified', 'size'. To sort in reversed order add a hyphen
+              to the parameter value: '-name'.
+            limit: The number of resources in the folder that should be
+             described in the list.
+            offset: The number of resources from the top of the list that
+            should be skipped in the response (used for paginated output).
 
         Returns:
-            List of 'limit' size consists of YaDiskFileObjects represent each file excluding directories.
+            List of 'limit' size consists of YaDiskFileObjects represent each
+             file excluding directories.
         """
         keys = {
             "sort": sort,
@@ -123,7 +134,7 @@ class YaDisk:
         Make a request for downloading file from YaDisk storage.
 
         Args:
-            path: Path of the file which need to download. Examples: 'disk:/path/foo.py', '/path/bar'.
+            download_link: link from `get_download_link` method
 
         Returns:
             Raw bytes of downloaded file.
@@ -146,8 +157,8 @@ class YaDisk:
         Send initial request to get link for download a file.
 
         Args:
-            destination: directory on YandexDisk storage where to save uploaded file.
-             Examples: 'disk:/path/foo.py', '/path/bar'.
+            destination: directory on YandexDisk storage where to
+             save uploaded file. Examples: 'disk:/path/foo.py', '/path/bar'.
 
         Returns:
             URL for the file upload
@@ -167,8 +178,9 @@ class YaDisk:
 
     def upload_file(self, upload_link, file_data) -> None:
         """
-        Upload a entire file by one single request. Before use this method call `get_upload_link`
-        and provide upload link this method.
+        Upload a entire file by one single request. Before use
+         this method call `get_upload_link` and provide upload
+         link this method.
 
         Args:
             upload_link: link for uploading file
@@ -189,7 +201,8 @@ class YaDisk:
         Make a request for making directory on YandexDisk storage.
 
         Args:
-            destination: Path to folder which needs to be created. Examples: 'disk:/path/foo.py', '/path/bar'.
+            destination: Path to folder which needs to be created.
+             Examples: 'disk:/path/foo.py', '/path/bar'.
 
         Raises:
             ApiResponseException: an error occurred accessing API.
@@ -212,8 +225,10 @@ class YaDisk:
         Make a request for removing file on YandexDisk storage.
 
         Args:
-            path: Path to folder which needs to be deleted. Examples: 'disk:/path/foo.py', '/path/bar'.
-            permanently: Optional; whether to delete the file permanently or move to the trash.
+            path: Path to folder which needs to be deleted.
+             Examples: 'disk:/path/foo.py', '/path/bar'.
+            permanently: Optional; whether to delete the file
+             permanently or move to the trash.
 
         Raises:
             ApiResponseException: an error occurred accessing API.

@@ -5,7 +5,7 @@ from defaults import (
     LIST_NEXT_PAGE_MSG,
     DOWNLOADING_FILE_MSG,
     UPLOADING_DIRECTORY_MSG,
-    DOWNLOADING_DIR_AS_ZIP_MSG,
+    DOWNLOADING_DIR_AS_ZIP_MSG, UNEXPECTED_VALUE_MSG,
 )
 from cloudbackup.yadisk import YaDisk
 import common_operations
@@ -70,7 +70,7 @@ class YaDiskWrapper:
         from `cloudbackup.yadisk`.
 
         Args:
-            file_abs_path: absolute path of file.
+            file_path: file path which need to be uploaded.
             destination: where to store uploaded file on YandexDisk.
 
         Raises:
@@ -130,7 +130,11 @@ class YaDiskWrapper:
         elif remote_file_object.type == "file":
             download_msg = DOWNLOADING_FILE_MSG.format(file_name=dl_path)
         else:
-            raise ValueError(common_operations.get_unexpected_value_msg(remote_file_object))
+            error_msg = UNEXPECTED_VALUE_MSG.format(
+                var_name=f"{remote_file_object=}".split("=")[0],
+                value=remote_file_object,
+            )
+            raise ValueError(error_msg)
         if overwrite and os.path.exists(dl_path):
             common_operations.print_overwrite_dialog(dl_path)
         if not overwrite and os.path.exists(dl_path):

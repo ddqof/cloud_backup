@@ -6,10 +6,9 @@ from defaults import (
     OVERWRITING_DIRECTORY_MSG,
     OVERWRITING_FILE_MSG,
     OVERWRITE_FILE_REQUEST_MSG,
-    ABORTED_MSG,
-    ACCESS_DENIED_MSG,
+    OW_ACCESS_DENIED_MSG,
+    RM_ACCESS_DENIED_MSG,
     UPLOADING_FILE_MSG,
-    GDRIVE_DIRECTORY_TYPE,
     UNEXPECTED_VALUE_MSG,
     DELETE_DIR_CONFIRMATION_MSG,
     SUCCESSFUL_DELETE_FILE_MSG,
@@ -33,12 +32,16 @@ def print_overwrite_dialog(path) -> None:
         overwrite_confirm = OVERWRITE_DIR_REQUEST_MSG.format(dir_name=path)
         exit_msg = OVERWRITING_DIRECTORY_MSG.format(dir_name=path)
     else:
-        raise ValueError(get_unexpected_value_msg(path))
+        error_msg = UNEXPECTED_VALUE_MSG.format(
+            var_name=f"{path=}".split("=")[0],
+            value=path,
+        )
+        raise ValueError(error_msg)
     user_confirm = input(overwrite_confirm)
     if user_confirm in {"y", "yes", ""}:
         print(exit_msg)
     else:
-        raise PermissionError(ACCESS_DENIED_MSG)
+        raise PermissionError(OW_ACCESS_DENIED_MSG)
 
 
 def remove(
@@ -49,46 +52,66 @@ def remove(
         permanently=False
 ) -> None:
     """
-    Method allows to remove file or directory on YaDisk or Google Drive remote storage.
+    Method allows to remove file or directory on YaDisk or Google Drive
+    remote storage.
 
     Args:
         storage: storage where file needs to be deleted
         file_name: name of file on remote storage
         destination: id of file or folder that needs to be deleted in case of
-         Google Drive. In case of YandexDisk storage remote file path is required.
+         Google Drive. In case of YandexDisk storage remote file path
+         is required.
         file_type: type of file on remote storage
-        permanently: Optional; whether to delete the file permanently or move to the trash.
+        permanently: Optional; whether to delete the file permanently or
+         move to the trash.
 
     Raises:
         ApiResponseException: an error occurred accessing API.
-        IncorrectPathException: if remote file path has prohibited chars. In case of YaDisk storage only.
+        IncorrectPathException: if remote file path has prohibited chars.
+         In case of YaDisk storage only.
     """
     if isinstance(storage, (GDrive, YaDisk)):
         if permanently:
-            if file_type in {"dir", GDRIVE_DIRECTORY_TYPE}:
-                delete_confirm = DELETE_DIR_CONFIRMATION_MSG.format(dir_name=file_name)
-                exit_msg = SUCCESSFUL_DELETE_DIR_MSG.format(dir_name=file_name)
+            if file_type == "dir":
+                delete_confirm = DELETE_DIR_CONFIRMATION_MSG.format(
+                    dir_name=file_name)
+                exit_msg = SUCCESSFUL_DELETE_DIR_MSG.format(
+                    dir_name=file_name)
             else:
-                delete_confirm = DELETE_FILE_CONFIRMATION_MSG.format(file_name=file_name)
-                exit_msg = SUCCESSFUL_DELETE_FILE_MSG.format(file_name=file_name)
+                delete_confirm = DELETE_FILE_CONFIRMATION_MSG.format(
+                    file_name=file_name)
+                exit_msg = SUCCESSFUL_DELETE_FILE_MSG.format(
+                    file_name=file_name)
         else:
-            if file_type in {"dir", GDRIVE_DIRECTORY_TYPE}:
-                delete_confirm = MOVE_DIR_TO_TRASH_CONFIRMATION_MSG.format(dir_name=file_name)
-                exit_msg = SUCCESSFUL_DIR_TRASH_MSG.format(dir_name=file_name)
+            if file_type == "dir":
+                delete_confirm = MOVE_DIR_TO_TRASH_CONFIRMATION_MSG.format(
+                    dir_name=file_name)
+                exit_msg = SUCCESSFUL_DIR_TRASH_MSG.format(
+                    dir_name=file_name)
             else:
-                delete_confirm = MOVE_FILE_TO_TRASH_CONFIRMATION_MSG.format(file_name=file_name)
-                exit_msg = SUCCESSFUL_FILE_TRASH_MSG.format(file_name=file_name)
+                delete_confirm = MOVE_FILE_TO_TRASH_CONFIRMATION_MSG.format(
+                    file_name=file_name)
+                exit_msg = SUCCESSFUL_FILE_TRASH_MSG.format(
+                    file_name=file_name)
         user_confirm = input(delete_confirm)
         if user_confirm in {"y", "yes", ""}:
             storage.remove(destination, permanently=permanently)
+            print(exit_msg)
         else:
-            exit_msg = ABORTED_MSG
-        print(exit_msg)
+            raise PermissionError(RM_ACCESS_DENIED_MSG)
     else:
-        raise ValueError(get_unexpected_value_msg(storage))
+        error_msg = UNEXPECTED_VALUE_MSG.format(
+            var_name=f"{storage=}".split("=")[0],
+            value=storage,
+        )
+        raise ValueError(error_msg)
 
 
-def put_file(storage: GDrive or YaDisk, local_path, destination=None) -> None:
+def put_file(
+        storage: GDrive or YaDisk,
+        local_path,
+        destination
+) -> None:
     """
     Getting link for upload file and then uploading file raw binary data
     to this link.
@@ -103,15 +126,15 @@ def put_file(storage: GDrive or YaDisk, local_path, destination=None) -> None:
         ApiResponseException: an error occurred accessing API
     """
     if isinstance(storage, GDrive):
-        if destination is None:
-            destination = "root"
         link = storage.get_upload_link(local_path, destination)
     elif isinstance(storage, YaDisk):
-        if destination is None:
-            destination = "/"
         link = storage.get_upload_link(destination)
     else:
-        raise ValueError(get_unexpected_value_msg(storage))
+        error_msg = UNEXPECTED_VALUE_MSG.format(
+            var_name=f"{storage=}".split("=")[0],
+            value=storage,
+        )
+        raise ValueError(error_msg)
     print(UPLOADING_FILE_MSG.format(file_name=local_path))
     with open(local_path, "rb") as f:
         file_data = f.read()
@@ -126,19 +149,11 @@ def print_remote_file(file_name, file_id, file_type) -> None:
     Args:
         file_name: name of file on remote storage
         file_type: type of file on remote storage
-        file_id: file id on remote storage (e.g. path on YaDisk one or file id on GDrive)
+        file_id: file id on remote storage
+        (e.g. path on YaDisk one or file id on GDrive)
     """
-
     default_view = f"{file_name} ({file_id})"
-    if file_type in {"dir", GDRIVE_DIRECTORY_TYPE}:
+    if file_type == "dir":
         print("".join(Fore.CYAN + default_view + Style.RESET_ALL))
     else:
         print(default_view)
-
-
-def get_unexpected_value_msg(variable):
-    return UNEXPECTED_VALUE_MSG.format(
-        #  check what returns f"{var=}", where var is a variable
-        var_name=f"{variable=}".split("=")[0],
-        value=variable,
-    )

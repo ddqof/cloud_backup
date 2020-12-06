@@ -11,7 +11,6 @@ from defaults import (
     DOWNLOADING_FILE_MSG,
     UPLOADING_DIRECTORY_MSG,
     SKIP_G_SUITE_FILE_MSG,
-    GDRIVE_DIRECTORY_TYPE
 )
 from cloudbackup.file_objects import GDriveFile
 from cloudbackup.gdrive import GDrive
@@ -31,24 +30,24 @@ class GDriveWrapper:
         from `cloudbackup.gdrive`.
 
         Args:
-            file: `GDriveFileObject` which content needs to be listed.
+            start_id: start of `GDriveFileObject` id which content needs to
+             be listed.
             order_key: attribute used to sort the list of files.
         """
         file = self.get_file_object_by_id(start_id)
         if file is None:
             files = self.get_all_files(owners=['me'])
             for file in files:
-                #  last argument shows whether file is directory or not
                 common_operations.print_remote_file(
                     file_name=file.name,
                     file_id=file.id,
-                    file_type=file.mime_type)
+                    file_type=file.type)
         else:
-            if file.mime_type != GDRIVE_DIRECTORY_TYPE:
+            if file.type != "dir":
                 common_operations.print_remote_file(
                     file_name=file.name,
                     file_id=file.id,
-                    file_type=file.mime_type)
+                    file_type=file.type)
             else:
                 while True:
                     page = self._gdrive.lsdir(dir_id=file.id,
@@ -59,7 +58,7 @@ class GDriveWrapper:
                         common_operations.print_remote_file(
                             file_name=file.name,
                             file_id=file.id,
-                            file_type=file.mime_type)
+                            file_type=file.type)
                     if page.next_page_token is not None:
                         user_confirm = input(LIST_NEXT_PAGE_MSG)
                         if user_confirm in {"y", "yes", ""}:
@@ -87,7 +86,7 @@ class GDriveWrapper:
             storage=self._gdrive,
             file_name=file.name,
             destination=file.id,
-            file_type=file.mime_type,
+            file_type=file.type,
             permanently=permanently)
 
     def download(self, file, local_destination=None, overwrite=False) -> None:
@@ -156,9 +155,11 @@ class GDriveWrapper:
         """
         all_files, page_token = [], None
         while True:
-            page_files, next_page_token = self._gdrive.lsdir(owners=owners,
-                                                             page_size=1000,
-                                                             page_token=page_token)
+            page_files, next_page_token = self._gdrive.lsdir(
+                owners=owners,
+                page_size=1000,
+                page_token=page_token
+            )
             all_files.extend(page_files)
             if next_page_token is None:
                 break
@@ -166,7 +167,7 @@ class GDriveWrapper:
                 page_token = next_page_token
         return all_files
 
-    def get_file_object_by_id(self, start_id) -> GDriveFile:
+    def get_file_object_by_id(self, start_id) -> GDriveFile or None:
         """
         Method used for user-friendly CLI interface that allows
         type only start of file id to get full file id.
@@ -191,13 +192,13 @@ class GDriveWrapper:
         else:
             raise FileNotFoundError(f"There is no file starts with id: {start_id}.")
 
-    def upload(self, file_path) -> None:
+    def upload(self, file_path, parents="root") -> None:
         """
         Method allows to upload directories or files using `GDrive` class
         from `cloudbackup.gdrive`.
 
         Args:
-            file_path: file path.
+            file_path: file path which need to be uploaded.
 
         Raises:
             FileNotFoundError: an error occurred accessing file using `file_abs_path`.
@@ -207,7 +208,9 @@ class GDriveWrapper:
         if os.path.isfile(file_abs_path):
             common_operations.put_file(
                 storage=self._gdrive,
-                local_path=file_abs_path)
+                local_path=file_abs_path,
+                destination=parents
+            )
         elif os.path.isdir(file_abs_path):
             parents = {}
             tree = os.walk(file_abs_path)

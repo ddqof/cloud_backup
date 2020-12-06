@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
-import common_operations
 import sys
 from colorama import init
 from cloudbackup.gdrive import GDrive
 from cloudbackup.yadisk import YaDisk
 from cloudbackup.exceptions import ApiResponseException
 from defaults import (DOWNLOAD_COMPLETED_MSG,
-                      UPLOAD_COMPLETED_MSG)
+                      UPLOAD_COMPLETED_MSG, UNEXPECTED_VALUE_MSG)
 from parser import parse_args
 from gdrive_wrapper import GDriveWrapper
 from yadisk_wrapper import YaDiskWrapper
@@ -24,17 +23,24 @@ def main():
         storage = YaDisk()
         wrapper = YaDiskWrapper(storage)
     else:
-        error_msg = common_operations.get_unexpected_value_msg(args.storage)
+        error_msg = UNEXPECTED_VALUE_MSG.format(
+            var_name=f"{args.storage=}".split("=")[0],
+            value=args.storage,
+        )
         raise ValueError(error_msg)
     try:
         if args.operation == "ls":
             wrapper.lsdir(args.remote_file, order_key=args.order_by)
         elif args.operation == "dl":
             if isinstance(storage, GDrive):
-                file = wrapper.get_file_object_by_id(args.remote_file)
-                wrapper.download(file, args.destination, args.overwrite)
+                remote_file = wrapper.get_file_object_by_id(args.remote_file)
             elif isinstance(storage, YaDisk):
-                wrapper.download(args.remote_file, args.destination, args.overwrite)
+                remote_file = args.remote_file
+            wrapper.download(
+                file=remote_file,
+                local_destination=args.destination,
+                overwrite=args.overwrite
+            )
             exit_msg = DOWNLOAD_COMPLETED_MSG
         elif args.operation == "ul":
             wrapper.upload(args.local_file)

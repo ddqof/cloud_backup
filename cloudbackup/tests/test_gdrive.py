@@ -41,7 +41,7 @@ def test_mkdir(gdrive):
         callback=request_callback,
         content_type="application/json"
     )
-    folder_id = gdrive.mkdir("test")
+    folder_id = gdrive.mkdir("tests")
     assert len(responses.calls) == 1
     check_auth_headers(responses.calls[0].request.headers)
     json_req_body = json.loads(responses.calls[0].request.body)
@@ -103,7 +103,8 @@ def test_non_dir_id_in_lsdir_query(gdrive):
     }
     responses.add(
         responses.GET,
-        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(url_params)}",
+        url=f"https://www.googleapis.com/drive/v3/files?"
+            f"{urlencode(url_params)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(FULL_LISTED_LSDIR_RESPONSE)
@@ -115,7 +116,8 @@ def test_non_dir_id_in_lsdir_query(gdrive):
     url_params["q"] = "trashed=False and 'me' in owners"
     responses.add(
         responses.GET,
-        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(url_params)}",
+        url=f"https://www.googleapis.com/drive/v3/files?"
+            f"{urlencode(url_params)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(FULL_LISTED_LSDIR_RESPONSE)
@@ -136,7 +138,8 @@ def test_dir_id_in_lsdir_query(gdrive):
     }
     responses.add(
         responses.GET,
-        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(url_params)}",
+        url=f"https://www.googleapis.com/drive/v3/files?"
+            f"{urlencode(url_params)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(PAGINATED_LSDIR_RESPONSE)
@@ -148,7 +151,8 @@ def test_dir_id_in_lsdir_query(gdrive):
     url_params["q"] = "trashed=False and 'root' in parents"
     responses.add(
         responses.GET,
-        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(url_params)}",
+        url=f"https://www.googleapis.com/drive/v3/files?"
+            f"{urlencode(url_params)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(PAGINATED_LSDIR_RESPONSE)
@@ -170,7 +174,8 @@ def test_paginate_lsdir(gdrive):
     }
     responses.add(
         responses.GET,
-        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(url_params)}",
+        url=f"https://www.googleapis.com/drive/v3/files?"
+            f"{urlencode(url_params)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(PAGINATED_LSDIR_RESPONSE)
@@ -194,7 +199,8 @@ def test_lsdir_returns_page(gdrive):
     }
     responses.add(
         responses.GET,
-        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(url_params)}",
+        url=f"https://www.googleapis.com/drive/v3/files?"
+            f"{urlencode(url_params)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(FULL_LISTED_LSDIR_RESPONSE)
@@ -211,7 +217,8 @@ def test_lsdir_returns_page(gdrive):
     assert page.next_page_token is None
     responses.replace(
         responses.GET,
-        url=f"https://www.googleapis.com/drive/v3/files?{urlencode(url_params)}",
+        url=f"https://www.googleapis.com/drive/v3/files?"
+            f"{urlencode(url_params)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(PAGINATED_LSDIR_RESPONSE)
@@ -256,7 +263,8 @@ def test_download(gdrive):
 def test_get_upload_link(gdrive):
     responses.add(
         responses.POST,
-        url="https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+        url="https://www.googleapis.com/upload/drive/v3/files?"
+            "uploadType=resumable",
         content_type="application/json",
         headers={"Location": "https://www.googleapis.com/upload/drive/v3/"
                              "files?uploadType=resumable&upload_id=some_id"}
@@ -283,7 +291,7 @@ def test_upload_file(gdrive):
         url=upload_link,
         content_type="application/json",
     )
-    gdrive.upload_file(upload_link, b"test")
+    gdrive.upload_file(upload_link, b"tests")
     assert len(responses.calls) == 1
     assert responses.calls[0].request.url == upload_link
-    assert responses.calls[0].request.body == b"test"
+    assert responses.calls[0].request.body == b"tests"

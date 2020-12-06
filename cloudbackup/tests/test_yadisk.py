@@ -35,7 +35,8 @@ def test_lsdir_def_args(yadisk):
     }
     responses.add(
         responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/?{urlencode(url_params)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources/?"
+            f"{urlencode(url_params)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(LSDIR_RESPONSE),
@@ -56,7 +57,8 @@ def test_lsdir_diff_args(yadisk):
     }
     responses.add(
         responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/?{urlencode(url_params)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources/?"
+            f"{urlencode(url_params)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(LSDIR_RESPONSE),
@@ -82,7 +84,8 @@ def test_lsdir_returns_page(yadisk):
     }
     responses.add(
         responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/?{urlencode(url_params)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources/?"
+            f"{urlencode(url_params)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(LSDIR_RESPONSE),
@@ -101,7 +104,8 @@ def test_lsdir_returns_page(yadisk):
     url_params["path"] = "/second_file.pdf"
     responses.add(
         responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/?{urlencode(url_params)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources/?"
+            f"{urlencode(url_params)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(LSDIR_RESPONSE["_embedded"]["items"][1]),
@@ -124,7 +128,8 @@ def test_list_files_def_args(yadisk):
     }
     responses.add(
         responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/files?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources/files?"
+            f"{urlencode(url_keys)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(LIST_FILES_RESPONSE)
@@ -144,7 +149,8 @@ def test_list_files_diff_args(yadisk):
     }
     responses.add(
         responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/files?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources/files?"
+            f"{urlencode(url_keys)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(LIST_FILES_RESPONSE)
@@ -168,7 +174,8 @@ def test_list_files_returns_correct_list(yadisk):
     }
     responses.add(
         responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/files?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources/files?"
+            f"{urlencode(url_keys)}",
         content_type="application/json",
         match_querystring=True,
         body=json.dumps(LIST_FILES_RESPONSE)
@@ -183,11 +190,12 @@ def test_list_files_returns_correct_list(yadisk):
 
 @responses.activate
 def test_get_download_link(yadisk):
-    path = "/test.txt"
+    path = "/tests.txt"
     url_keys = {"path": path}
     responses.add(
         responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/download?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources/download?"
+            f"{urlencode(url_keys)}",
         content_type="application/json",
         match_querystring=True,
         json={"href": "https://very_secret_download_ref"}
@@ -222,7 +230,8 @@ def test_move_to_trash(yadisk):
     }
     responses.add(
         method="DELETE",
-        url=f"https://cloud-api.yandex.net/v1/disk/resources?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources?"
+            f"{urlencode(url_keys)}",
         content_type="application/json",
         status=204,
         body="",
@@ -242,7 +251,8 @@ def test_remove_permanently(yadisk):
     }
     responses.add(
         method="DELETE",
-        url=f"https://cloud-api.yandex.net/v1/disk/resources?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources?"
+            f"{urlencode(url_keys)}",
         content_type="application/json",
         status=204,
         body="",
@@ -259,7 +269,8 @@ def test_mkdir(yadisk):
     url_keys = {"path": path}
     responses.add(
         responses.PUT,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources?"
+            f"{urlencode(url_keys)}",
         content_type="application/json",
         status=201,
         body=""
@@ -276,7 +287,8 @@ def test_get_upload_link(yadisk):
     url_keys = {"path": path}
     responses.add(
         responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/upload?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources/upload?"
+            f"{urlencode(url_keys)}",
         content_type="application/json",
         json={"href": "some_upload_link"}
     )
@@ -303,7 +315,7 @@ def test_upload_file(yadisk):
 
 @responses.activate
 def test_lsdir_exception(yadisk):
-    path = "/test"
+    path = "/tests"
     url_keys = {
         "path": path,
         "sort": "modified",
@@ -312,7 +324,8 @@ def test_lsdir_exception(yadisk):
     }
     responses.add(
         responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources/?"
+            f"{urlencode(url_keys)}",
         json={
             "message": "Не удалось найти запрошенный ресурс.",
             "description": "Resource not found.",
@@ -332,7 +345,8 @@ def test_get_download_link_for_not_existing_file(yadisk):
     url_keys = {"path": path}
     responses.add(
         responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/download?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources/download?"
+            f"{urlencode(url_keys)}",
         json={
             "message": "Не удалось найти запрошенный ресурс.",
             "description": "Resource not found.",
@@ -352,7 +366,8 @@ def test_get_download_link_for_not_downloadable_file(yadisk):
     url_keys = {"path": path}
     responses.add(
         responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/download?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources/download?"
+            f"{urlencode(url_keys)}",
         json={"href": ""},
         status=200
     )
@@ -367,7 +382,8 @@ def test_get_upload_link_for_root_dir(yadisk):
     url_keys = {"path": path}
     responses.add(
         responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/upload?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources/upload?"
+            f"{urlencode(url_keys)}",
         json={
             "message": "Указанного пути \"/\" не существует.",
             "description": "Specified path \"/\" doesn't exists.",
@@ -387,29 +403,35 @@ def test_make_existing_dir(yadisk):
     url_keys = {"path": path}
     responses.add(
         responses.PUT,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources?"
+            f"{urlencode(url_keys)}",
         json={
-            "message": "По указанному пути \"/existing_dir\" уже существует папка с таким именем.",
-            "description": "Specified path \"/existing_dir\" points to existent directory.",
+            "message": "По указанному пути \"/existing_dir\""
+                       " уже существует папка с таким именем.",
+            "description": "Specified path \"/existing_dir\""
+                           " points to existent directory.",
             "error": "DiskPathPointsToExistentDirectoryError"
         },
         status=409
     )
     with pytest.raises(ApiResponseException) as api_exc:
         yadisk.mkdir(path)
-    assert str(api_exc.value) == "Specified path \"/existing_dir\" points to existent directory."
+    assert str(api_exc.value) == ("Specified path \"/existing_dir\""
+                                  " points to existent directory.")
     assert api_exc.value.status_code == 409
 
 
 @responses.activate
 def test_mkdir_with_incorrect_path(yadisk):
-    path = "/test:what"
+    path = "/tests:what"
     url_keys = {"path": path}
     responses.add(
         responses.PUT,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources?{urlencode(url_keys)}",
+        url=f"https://cloud-api.yandex.net/v1/disk/resources?"
+            f"{urlencode(url_keys)}",
         json={
-            "message": "Указанный формат ресурса Диска \"what\" не корректен. Должен начинаться с /.",
+            "message": "Указанный формат ресурса Диска \"what\""
+                       " не корректен. Должен начинаться с /.",
             "description": "Specified path \"what\" has incorrect format",
             "error": "DiskPathFormatError"
         },
@@ -417,4 +439,5 @@ def test_mkdir_with_incorrect_path(yadisk):
     )
     with pytest.raises(IncorrectPathException) as api_exc:
         yadisk.mkdir(path)
-    assert str(api_exc.value) == f"Path: {path} must not include any `:` characters."
+    assert str(api_exc.value) == (f"Path: {path} must not include"
+                                  f" any `:` characters.")
