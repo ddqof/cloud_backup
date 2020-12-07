@@ -37,7 +37,7 @@ def main():
             elif isinstance(storage, YaDisk):
                 remote_file = args.remote_file
             wrapper.download(
-                file=remote_file,
+                remote_file,
                 local_destination=args.destination,
                 overwrite=args.overwrite
             )

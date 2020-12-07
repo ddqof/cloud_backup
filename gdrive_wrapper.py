@@ -2,7 +2,12 @@ import errno
 import os
 import shutil
 
-import common_operations
+from common_operations import (
+    print_ow_dialog,
+    print_remote_file,
+    remove_remote_file,
+    put_file
+)
 from defaults import (
     GDRIVE_SORT_KEYS,
     ABORTED_MSG,
@@ -38,13 +43,13 @@ class GDriveWrapper:
         if target is None:
             files = self.get_all_files(owners=['me'])
             for file in files:
-                common_operations.print_remote_file(
+                print_remote_file(
                     file_name=file.name,
                     file_id=file.id,
                     file_type=file.type)
         else:
             if target.type == "file":
-                common_operations.print_remote_file(
+                print_remote_file(
                     file_name=target.name,
                     file_id=target.id,
                     file_type=target.type)
@@ -58,7 +63,7 @@ class GDriveWrapper:
                         order_by=GDRIVE_SORT_KEYS[order_key],
                         page_token=page_token)
                     for file in page.files:
-                        common_operations.print_remote_file(
+                        print_remote_file(
                             file_name=file.name,
                             file_id=file.id,
                             file_type=file.type)
@@ -87,7 +92,7 @@ class GDriveWrapper:
             ApiResponseException: an error occurred accessing API.
         """
         file = self.get_file_object_by_id(start_id)
-        common_operations.remove(
+        remove_remote_file(
             storage=self._gdrive,
             file_name=file.name,
             destination=file.id,
@@ -117,7 +122,7 @@ class GDriveWrapper:
             dl_path = os.path.join(local_destination, file.name)
         dl_path = os.path.abspath(dl_path)
         if overwrite and os.path.exists(dl_path):
-            common_operations.print_overwrite_dialog(dl_path)
+            print_ow_dialog(dl_path)
         if not overwrite and os.path.exists(dl_path):
             raise FileExistsError(
                 errno.EEXIST,
@@ -137,8 +142,8 @@ class GDriveWrapper:
                 else:
                     print(MAKING_DIRECTORY_MSG.format(dir_name=dl_path))
                     os.mkdir(dl_path)
+                next_page_token = None
                 while True:
-                    next_page_token = None
                     page = self._gdrive.lsdir(file.id,
                                               owners=['me'],
                                               page_token=next_page_token,
@@ -229,7 +234,7 @@ class GDriveWrapper:
         """
         file_abs_path = os.path.abspath(file_path)
         if os.path.isfile(file_abs_path):
-            common_operations.put_file(
+            put_file(
                 storage=self._gdrive,
                 local_path=file_abs_path,
                 destination=parents
@@ -250,7 +255,7 @@ class GDriveWrapper:
                     continue
                 for file in filenames:
                     ul_path = os.path.join(root, file)
-                    common_operations.put_file(
+                    put_file(
                         storage=self._gdrive,
                         local_path=ul_path,
                         destination=folder_id)

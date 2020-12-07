@@ -6,6 +6,12 @@ import requests
 from ._authenticator import Authenticator
 from .file_objects import GDriveFile
 from .exceptions import ApiResponseException
+from ._defaults import (GDRIVE_BACKEND_ERROR,
+                        GDRIVE_INVALID_CREDENTIALS,
+                        GDRIVE_LIMIT_EXCEEDED,
+                        GDRIVE_FILE_NOT_FOUND,
+                        GDRIVE_TOO_MANY_REQUESTS,
+                        GDRIVE_BAD_REQUEST)
 
 
 class GDrive:
@@ -277,7 +283,14 @@ class GDrive:
         Raises:
             ApiResponseException: If API response has unsuccessful status code.
         """
-        if api_response.status_code in {400, 401, 403, 404, 429, 500}:
+        if api_response.status_code in {
+            GDRIVE_TOO_MANY_REQUESTS,
+            GDRIVE_BAD_REQUEST,
+            GDRIVE_FILE_NOT_FOUND,
+            GDRIVE_LIMIT_EXCEEDED,
+            GDRIVE_BACKEND_ERROR,
+            GDRIVE_INVALID_CREDENTIALS
+        }:
             raise ApiResponseException(
                 api_response.status_code,
                 api_response.json()["error"]["message"]

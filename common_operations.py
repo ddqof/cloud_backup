@@ -24,7 +24,7 @@ from cloudbackup.gdrive import GDrive
 from cloudbackup.yadisk import YaDisk
 
 
-def print_overwrite_dialog(path) -> None:
+def print_ow_dialog(path) -> None:
     if os.path.isfile(path):
         overwrite_confirm = OVERWRITE_FILE_REQUEST_MSG.format(file_name=path)
         exit_msg = OVERWRITING_FILE_MSG.format(file_name=path)
@@ -44,7 +44,7 @@ def print_overwrite_dialog(path) -> None:
         raise PermissionError(OW_ACCESS_DENIED_MSG)
 
 
-def remove(
+def remove_remote_file(
         storage: GDrive or YaDisk,
         file_name,
         destination,

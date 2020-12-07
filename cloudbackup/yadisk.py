@@ -125,7 +125,7 @@ class YaDisk:
                 request_for_link.json()["description"]
             )
         request_for_link = request_for_link.json()
-        if request_for_link["href"] == "":
+        if not request_for_link["href"]:
             raise FileIsNotDownloadableException(path)
         return request_for_link["href"]
 

@@ -2,18 +2,16 @@ import pytest
 from unittest.mock import patch, Mock
 from cloudbackup.gdrive import GDrive
 from cloudbackup.yadisk import YaDisk
-from common_operations import (
-    put_file,
-    remove,
-    print_overwrite_dialog,
-    print_remote_file
-)
+from common_operations import (put_file,
+                               remove_remote_file,
+                               print_ow_dialog,
+                               print_remote_file)
 
 
 @pytest.fixture()
 def test_file(tmpdir):
-    test_file = tmpdir.mkdir("tmp_test").join("test_file.txt")
-    test_file.write("data")
+    test_file = tmpdir.join("test_file.txt")
+    test_file.write("")
     return test_file
 
 
@@ -25,7 +23,7 @@ def test_dir(tmpdir):
 def test_overwrite_dialog_with_existing_file(test_file, capsys):
     with patch("builtins.input") as input_mock:
         input_mock.return_value = "y"
-        print_overwrite_dialog(test_file)
+        print_ow_dialog(test_file)
         input_mock.assert_called_once_with(f"Are you sure you want to"
                                            f" overwrite file: `{test_file}`?"
                                            f" ([y]/n) ")
@@ -36,7 +34,7 @@ def test_overwrite_dialog_with_existing_file(test_file, capsys):
 def test_overwrite_dialog_with_existing_dir(test_dir, capsys):
     with patch("builtins.input") as input_mock:
         input_mock.return_value = "y"
-        print_overwrite_dialog(test_dir)
+        print_ow_dialog(test_dir)
         input_mock.assert_called_once_with(f"Are you sure you want to"
                                            f" overwrite directory: "
                                            f"`{test_dir}`? ([y]/n) ")
@@ -46,7 +44,7 @@ def test_overwrite_dialog_with_existing_dir(test_dir, capsys):
 
 def test_overwrite_dialog_invalid_value(capsys):
     with pytest.raises(ValueError) as e:
-        print_overwrite_dialog("any_invalid_path")
+        print_ow_dialog("any_invalid_path")
     assert str(e.value) == ("`path` has unexpected value:"
                             " any_invalid_path")
     captured = capsys.readouterr()
@@ -57,7 +55,7 @@ def test_overwrite_deny(test_dir, capsys):
     with patch("builtins.input") as input_mock:
         input_mock.return_value = "n"
         with pytest.raises(PermissionError) as e:
-            print_overwrite_dialog(test_dir)
+            print_ow_dialog(test_dir)
         input_mock.assert_called_once_with(
             f"Are you sure you want to overwrite"
             f" directory: `{test_dir}`? ([y]/n) "
@@ -73,7 +71,7 @@ def test_remove_dir_permanently(mock_storage, capsys):
     with patch("builtins.input") as input_mock:
         input_mock.return_value = "y"
         testdir = "test_dirname"
-        remove(
+        remove_remote_file(
             storage=mock_storage,
             file_name=testdir,
             destination="/",
@@ -95,7 +93,7 @@ def test_move_dir_to_trash(mock_storage, capsys):
     with patch("builtins.input") as input_mock:
         input_mock.return_value = "y"
         testdir = "test_dirname"
-        remove(
+        remove_remote_file(
             storage=mock_storage,
             file_name=testdir,
             destination="/",
@@ -117,7 +115,7 @@ def test_remove_file_permanently(mock_storage, capsys):
     with patch("builtins.input") as input_mock:
         input_mock.return_value = "y"
         testfile = "test_filename"
-        remove(
+        remove_remote_file(
             storage=mock_storage,
             file_name=testfile,
             destination="/",
@@ -138,7 +136,7 @@ def test_move_file_to_trash(mock_storage, capsys):
     with patch("builtins.input") as input_mock:
         input_mock.return_value = "y"
         testfile = "test_filename"
-        remove(
+        remove_remote_file(
             storage=mock_storage,
             file_name=testfile,
             destination="/",
@@ -161,7 +159,7 @@ def test_deny_remove(mock_storage, capsys):
         input_mock.return_value = "n"
         testfile = "test_filename"
         with pytest.raises(PermissionError) as e:
-            remove(
+            remove_remote_file(
                 storage=mock_storage,
                 file_name=testfile,
                 destination="/",
@@ -176,7 +174,7 @@ def test_deny_remove(mock_storage, capsys):
 def test_remove_on_invalid_storage(test_file, capsys):
     mock_storage = Mock()
     with pytest.raises(ValueError) as e:
-        remove(
+        remove_remote_file(
             storage=mock_storage,
             file_name=test_file,
             destination="any_dest",

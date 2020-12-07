@@ -117,11 +117,11 @@ class YaDiskWrapper:
 
     def remove(self, path, permanently=False) -> None:
         remote_file = self._yadisk.lsdir(path).file_info
-        common_operations.remove(storage=self._yadisk,
-                                 file_name=remote_file.name,
-                                 destination=path,
-                                 file_type=remote_file.type,
-                                 permanently=permanently)
+        common_operations.remove_remote_file(storage=self._yadisk,
+                                             file_name=remote_file.name,
+                                             destination=path,
+                                             file_type=remote_file.type,
+                                             permanently=permanently)
 
     def download(
             self,
@@ -157,7 +157,7 @@ class YaDiskWrapper:
             )
             raise ValueError(error_msg)
         if overwrite and os.path.exists(dl_path):
-            common_operations.print_overwrite_dialog(dl_path)
+            common_operations.print_ow_dialog(dl_path)
         if not overwrite and os.path.exists(dl_path):
             raise FileExistsError(
                 errno.EEXIST,
