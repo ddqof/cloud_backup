@@ -3,15 +3,15 @@ import pytest
 import os
 import pickle
 from callee import Contains
-from cloudbackup._defaults import TEST_GOOGLE_TOKEN_PATH, TEST_YANDEX_TOKEN_PATH
+from cloudbackup._defaults import (TEST_GOOGLE_TOKEN_PATH,
+                                   TEST_YANDEX_TOKEN_PATH)
 from cloudbackup._authenticator import Authenticator
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 
 @pytest.fixture()
 def auth():
-    with patch("test_authenticators.Authenticator"):
-        yield Authenticator()
+    yield Authenticator()
     if os.path.exists(TEST_GOOGLE_TOKEN_PATH):
         os.remove(TEST_GOOGLE_TOKEN_PATH)
     if os.path.exists(TEST_YANDEX_TOKEN_PATH):
@@ -23,12 +23,13 @@ def test_get_gdrive_token_first_time(auth):
     Test GDriveAuth.authenticate method when user have not operated with
     program yet or have deleted token.pickle file.
     """
-    code = "4/0AY0e-g5asI03WpGd_j_30E_aMQ1-_XXXXXNcKAel35qh2AjkGGBgAz9_zPXiyzHdw_XXXX"
+    auth._client_socket = Mock()
+    code = "4/0AY0e-g5asIaMQ1-_XXXXXNcKAel35qh2AjkGGBgAz9_zPXiyzHdw_XXXX"
     auth._handle_user_prompt = Mock(return_value=code)
     #  tests data from oauth2 docs
     token_data = {
-        "access_token": "1/fFAGRNJru1FTz70BzhT3Zg",
-        "refresh_token": "1//xEoDL4iW3cxlI7yDbSRFYNG01kVKM2C-259HOF2aQbI",
+        "access_token": "very_secret_access_token",
+        "refresh_token": "some_refresh_token",
         "expires_in": 3920,
     }
     auth._get_gdrive_tokens_from_api = Mock(return_value=token_data)
@@ -55,11 +56,13 @@ def test_get_gdrive_token_first_time(auth):
         "redirect_uri"
     ]
     for i in range(len(keys)):
-        auth._get_gdrive_tokens_from_api.assert_called_once_with(Contains(keys[i]))
+        auth._get_gdrive_tokens_from_api.assert_called_once_with(
+            Contains(keys[i])
+        )
     assert get_tokens_args["code"] == code
     assert get_tokens_args["grant_type"] == "authorization_code"
     assert get_tokens_args["redirect_uri"] == "http://127.0.0.1:8000"
-    assert token_data == TEST_GOOGLE_TOKEN_PATH
+    check_dump_token_data(token_data, TEST_GOOGLE_TOKEN_PATH)
     assert access_token == token_data["access_token"]
 
 
@@ -69,8 +72,8 @@ def test_gdrive_token_extracting_correctly_from_dump(auth):
     :return:
     """
     token_data_in_file = {
-        "access_token": "1/fFAGRNJru1FTz70BzhT3Zg",
-        "refresh_token": "1//xEoDL4iW3cxlI7yDbSRFYNG01kVKM2C-259HOF2aQbI",
+        "access_token": "very_secret_access_token",
+        "refresh_token": "some_refresh_token",
         "expire_time": datetime.datetime.now() + datetime.timedelta(0, 3920)
     }
     with open(TEST_GOOGLE_TOKEN_PATH, "wb") as f:
@@ -81,15 +84,15 @@ def test_gdrive_token_extracting_correctly_from_dump(auth):
 
 def test_gdrive_token_is_refreshed(auth):
     expired_token_data = {
-        "access_token": "1/fFAGRNJru1FTz70BzhT3Zg",
-        "refresh_token": "1//xEoDL4iW3cxlI7yDbSRFYNG01kVKM2C-259HOF2aQbI",
+        "access_token": "very_secret_access_token",
+        "refresh_token": "some_refresh_token",
         "expire_time": datetime.datetime.now() - datetime.timedelta(0, 100)
     }
     with open(TEST_GOOGLE_TOKEN_PATH, "wb") as f:
         pickle.dump(expired_token_data, f)
     updated_token_data = {
         "refresh_token": expired_token_data["refresh_token"],
-        "access_token": "XXXXXXXXXXXXXXXXXXXXXXX",
+        "access_token": "another_secret_access_token",
         "expires_in": 3920
     }
     auth._get_gdrive_tokens_from_api = Mock(return_value=updated_token_data)
@@ -111,12 +114,12 @@ def test_gdrive_token_is_refreshed(auth):
 
 
 def test_get_yadisk_token_first_time(auth):
+    auth._client_socket = Mock()
     code = "7905534"
     auth._handle_user_prompt = Mock(return_value=code)
     token_data = {
-        "access_token": "AgAAAAAG5xalAAahrb0bqKqpYEnLsQfIIemKzJc",
-        "refresh_token": "1:lvpRBSQ5sq4VTTKh:uXEgde1e4q7YG42i-S8Ar"
-                         "0cBbaXQk2ER2XImxmIYTlog4cyB6gUL:QKxHAqbWOSp_zKMv58zumw",
+        "access_token": "very_secret_access_token",
+        "refresh_token": "some_refresh_token",
         "expires_in": 31466940,
     }
     auth._get_yadisk_tokens_from_api = Mock(return_value=token_data)
@@ -155,10 +158,10 @@ def test_get_yadisk_token_first_time(auth):
 
 def test_yadisk_token_extracting_correctly_from_dump(auth):
     token_data_in_file = {
-        "access_token": "AgAAAAAG5xalAAahrb0bqKqpYEnLsQfIIemKzJc",
-        "refresh_token": "1:lvpRBSQ5sq4VTTKh:uXEgde1e4q7YG42i-S8Ar"
-                         "0cBbaXQk2ER2XImxmIYTlog4cyB6gUL:QKxHAqbWOSp_zKMv58zumw",
-        "expire_time": datetime.datetime.now() + datetime.timedelta(0, 31466940)
+        "access_token": "very_secret_access_token",
+        "refresh_token": "some_refresh_token",
+        "expire_time": datetime.datetime.now() + datetime.timedelta(
+            0, 31466940)
     }
     with open(TEST_YANDEX_TOKEN_PATH, "wb") as f:
         pickle.dump(token_data_in_file, f)
