@@ -34,8 +34,8 @@ class GDriveWrapper:
              be listed.
             order_key: attribute used to sort the list of files.
         """
-        file = self.get_file_object_by_id(start_id)
-        if file is None:
+        target = self.get_file_object_by_id(start_id)
+        if target is None:
             files = self.get_all_files(owners=['me'])
             for file in files:
                 common_operations.print_remote_file(
@@ -43,19 +43,20 @@ class GDriveWrapper:
                     file_id=file.id,
                     file_type=file.type)
         else:
-            if file.type != "dir":
+            if target.type == "file":
                 common_operations.print_remote_file(
-                    file_name=file.name,
-                    file_id=file.id,
-                    file_type=file.type)
+                    file_name=target.name,
+                    file_id=target.id,
+                    file_type=target.type)
             else:
+                page_token = None
                 while True:
                     page = self._gdrive.lsdir(
-                        dir_id=file.id,
+                        dir_id=target.id,
                         owners=['me'],
                         page_size=20,
-                        order_by=GDRIVE_SORT_KEYS[order_key]
-                    )
+                        order_by=GDRIVE_SORT_KEYS[order_key],
+                        page_token=page_token)
                     for file in page.files:
                         common_operations.print_remote_file(
                             file_name=file.name,
@@ -64,6 +65,7 @@ class GDriveWrapper:
                     if page.next_page_token is not None:
                         user_confirm = input(LIST_NEXT_PAGE_MSG)
                         if user_confirm in {"y", "yes", ""}:
+                            page_token = page.next_page_token
                             continue
                         else:
                             print(ABORTED_MSG)
