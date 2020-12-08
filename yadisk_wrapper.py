@@ -1,5 +1,7 @@
 import errno
 import os
+import platform
+import pathlib
 from defaults import (
     YADISK_SORT_KEYS,
     LIST_NEXT_PAGE_MSG,
@@ -84,21 +86,26 @@ class YaDiskWrapper:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        file_abs_path = os.path.abspath(file_path)
-        if os.path.isfile(file_abs_path):
+        if destination.endswith("/"):
+            destination = destination[:-1]
+        #  force to use abs path because of '.' path
+        abs_file_path = os.path.abspath(file_path)
+        if os.path.isfile(abs_file_path):
             common_operations.put_file(
                 storage=self._yadisk,
-                local_path=file_abs_path,
-                destination=f"{destination}{os.path.split(file_abs_path)[1]}")
-        elif os.path.isdir(file_abs_path):
-            if file_abs_path.endswith(os.path.sep):
-                file_abs_path = file_abs_path[:-1]
-            tree = os.walk(file_abs_path)
-            head = os.path.split(file_abs_path)[0]
+                local_path=abs_file_path,
+                destination=f"{destination}/{os.path.basename(file_path)}")
+        elif os.path.isdir(abs_file_path):
+            if abs_file_path.endswith(os.path.sep):
+                abs_file_path = abs_file_path[:-1]
+            posix_base = os.path.dirname(YaDiskWrapper._get_posix_path(abs_file_path))
+            tree = os.walk(abs_file_path)
             for root, dirs, filenames in tree:
-                destination = root.split(head)[1]
+                current_dir = root.replace(posix_base, "")
+                target = f"{destination}{current_dir}"
                 print(UPLOADING_DIRECTORY_MSG.format(dir_name=root))
-                self._yadisk.mkdir(destination)
+                #  TODO: поменять вывод (например: "making `remote_dir` for `local_dir`")
+                self._yadisk.mkdir(target)
                 if not filenames:
                     continue
                 for filename in filenames:
@@ -106,14 +113,22 @@ class YaDiskWrapper:
                     common_operations.put_file(
                         storage=self._yadisk,
                         local_path=current_ul_path,
-                        destination=f"{destination}/{filename}"
-                    )
+                        destination=f"{target}/{filename}")
         else:
             raise FileNotFoundError(
                 errno.ENOENT,
                 os.strerror(errno.ENOENT),
-                file_abs_path
-            )
+                abs_file_path)
+
+    @staticmethod
+    def _get_posix_path(path):
+        if platform.system() in {"Darwin", "Linux"}:
+            return path
+        elif platform.system() == "Windows":
+            w_path = pathlib.PureWindowsPath(path)
+            w_path.as_posix()
+        else:
+            raise ValueError
 
     def remove(self, path, permanently=False) -> None:
         remote_file = self._yadisk.lsdir(path).file_info

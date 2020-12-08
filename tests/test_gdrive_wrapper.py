@@ -210,7 +210,7 @@ def test_download_file_with_def_args(capsys, wrapper):
         os.remove(remote_target.name)
     wrapper.get_file_object_by_id = Mock(return_value=remote_target)
     wrapper._gdrive.download = Mock(return_value=b"hello world")
-    with patch("gdrive_wrapper.print_overwrite_dialog") as ov_mock:
+    with patch("gdrive_wrapper.print_ow_dialog") as ov_mock:
         wrapper.download(remote_target)
         captured = capsys.readouterr()
         assert captured.out == f"Downloading file:" \
@@ -311,7 +311,7 @@ def test_download_doesnt_overwrite(tmpdir, wrapper):
     remote_target.name = test_file.basename
     test_content = b"check that this content will not disappear"
     test_file.write_binary(test_content)
-    with patch("gdrive_wrapper.print_overwrite_dialog") as ow_mock:
+    with patch("gdrive_wrapper.print_ow_dialog") as ow_mock:
         with pytest.raises(FileExistsError):
             wrapper.download(remote_target, test_file.dirname)
         ow_mock.assert_not_called()

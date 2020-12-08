@@ -43,7 +43,7 @@ def main():
             )
             exit_msg = DOWNLOAD_COMPLETED_MSG
         elif args.operation == "ul":
-            wrapper.upload(args.local_file)
+            wrapper.upload(args.local_file, destination=args.destination)
             exit_msg = UPLOAD_COMPLETED_MSG
         elif args.operation == "rm":
             wrapper.remove(args.remote_file, permanently=args.permanently)
