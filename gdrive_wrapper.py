@@ -158,7 +158,7 @@ class GDriveWrapper:
             else:
                 print(SKIP_G_SUITE_FILE_MSG.format(file_name=dl_path))
 
-    def get_all_files(self, owners=None) -> list:
+    def get_all_files(self, owners=None) -> dict:
         """
         Method used for getting all files on Google Drive storage using
         `GDrive` class from `cloudbackup.gdrive`.
@@ -181,7 +181,11 @@ class GDriveWrapper:
                 break
             else:
                 page_token = next_page_token
-        return all_files
+        files_with_id = {}
+        for file in all_files:
+            start_id = file.id[:5]
+            files_with_id[start_id] = file
+        return files_with_id
 
     def get_file_object_by_id(self, start_id) -> GDriveFile or None:
         """
@@ -202,17 +206,10 @@ class GDriveWrapper:
                     "id": "root",
                     "mimeType": "application/vnd.google-apps.folder"
                 })
-        found = []
-        for file in self.get_all_files():
-            if file.id.startswith(start_id):
-                found.append(file)
-                if len(found) > 1:
-                    raise FileNotFoundError(
-                        "Please enter more symbols to determine File ID."
-                    )
-        if len(found) == 1:
-            return found[0]
-        else:
+        files = self.get_all_files()
+        try:
+            return files[start_id]
+        except KeyError:
             raise FileNotFoundError(
                 f"There is no file starts with id: {start_id}."
             )

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+from time import perf_counter
 from colorama import init
 from cloudbackup.gdrive import GDrive
 from cloudbackup.yadisk import YaDisk
@@ -13,6 +14,7 @@ from yadisk_wrapper import YaDiskWrapper
 
 
 def main():
+    start = perf_counter()
     exit_msg = None
     init()
     args = parse_args()
@@ -47,6 +49,8 @@ def main():
             exit_msg = UPLOAD_COMPLETED_MSG
         elif args.operation == "rm":
             wrapper.remove(args.remote_file, permanently=args.permanently)
+        end = perf_counter() - start
+        print(end)
         if exit_msg:
             print(exit_msg)
     except (ApiResponseException,
