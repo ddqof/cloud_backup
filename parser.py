@@ -36,15 +36,15 @@ def parse_args():
         default="modified",
         choices=[
             "name", "created", "modified", "size", "folder", "path",
-            "rev name", "rev created", "rev modified", "ref size",
-            "ref folder", "ref path",
+            "rev_name", "rev_created", "rev_modified", "rev_size",
+            "rev_folder", "rev_path",
         ],
         metavar="",
         help="Sort key for file listing. Available keys are: "
              "'name', 'created', 'modified', 'size'."
              " Also 'folder' (will show folders first) for GDrive only and"
              " 'path' (will sort by path) for YaDisk only. To sort in"
-             " reversed order add prefix 'rev'. For example: 'rev_name'.")
+             " reversed order add previx 'rev'. For example: 'rev_name'.")
 
     dl_parser = subparsers.add_parser(
         "dl",
