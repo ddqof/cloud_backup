@@ -41,18 +41,23 @@ class GDriveWrapper:
         """
         target = self.get_file_object_by_id(start_id)
         if target is None:
-            files = self.get_all_files(owners=['me'])
-            for file in files:
+            files = self.get_all_files(
+                owners=['me'],
+                order_by=GDRIVE_SORT_KEYS[order_key]
+            )
+            for file in files.values():
                 print_remote_file(
                     file_name=file.name,
                     file_id=file.id,
-                    file_type=file.type)
+                    file_type=file.type
+                )
         else:
             if target.type == "file":
                 print_remote_file(
                     file_name=target.name,
                     file_id=target.id,
-                    file_type=target.type)
+                    file_type=target.type
+                )
             else:
                 page_token = None
                 while True:
@@ -66,7 +71,8 @@ class GDriveWrapper:
                         print_remote_file(
                             file_name=file.name,
                             file_id=file.id,
-                            file_type=file.type)
+                            file_type=file.type
+                        )
                     if page.next_page_token is not None:
                         user_confirm = input(LIST_NEXT_PAGE_MSG)
                         if user_confirm in {"y", "yes", ""}:
@@ -158,22 +164,28 @@ class GDriveWrapper:
             else:
                 print(SKIP_G_SUITE_FILE_MSG.format(file_name=dl_path))
 
-    def get_all_files(self, owners=None) -> dict:
+    def get_all_files(self, owners=None, order_by="modifiedTime") -> dict:
         """
         Method used for getting all files on Google Drive storage using
         `GDrive` class from `cloudbackup.gdrive`.
 
         Args:
             owners: Optional; list of owners whose files should be listed.
+            order_by: Optional; Sort key.
 
         Returns:
-            list of all files in Google Drive storage.
+            A dict with the first 5 id symbols and GDriveFileObject matching.
+            For example:
+
+            {"123xy": GDriveFileObject_1,
+             "xyzls": GDriveFileObject_2}
         """
         all_files, page_token = [], None
         while True:
             page_files, next_page_token = self._gdrive.lsdir(
                 owners=owners,
                 page_size=1000,
+                order_by=order_by,
                 page_token=page_token
             )
             all_files.extend(page_files)
@@ -214,7 +226,7 @@ class GDriveWrapper:
                 f"There is no file starts with id: {start_id}."
             )
 
-    def upload(self, file_path, parents="root") -> None:
+    def upload(self, file_path, parents) -> None:
         """
         Method allows to upload directories or files using `GDrive` class
         from `cloudbackup.gdrive`.
