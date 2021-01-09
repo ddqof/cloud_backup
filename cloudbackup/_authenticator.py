@@ -29,7 +29,9 @@ class Authenticator:
 
     def _handle_user_prompt(self, url):
         """
-        :param url: url that should be opened to let user give permissions
+        Open url in browser to let user give permissions for using this app.
+
+        :param url: url that should be opened
         :return: tuple(client_socket, response)
         """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
@@ -47,6 +49,9 @@ class Authenticator:
                 return re.search(r"code=(\S+)[\s&]", response).group(1)
 
     def _dump_token_data(self, api_response, filename):
+        """
+        Dump token data from API to file using pickle.
+        """
         expire_seconds = datetime.timedelta(0, api_response["expires_in"] -
                                             INACCURACY_SECONDS)
         token_data = {
@@ -59,6 +64,9 @@ class Authenticator:
             pickle.dump(token_data, file)
 
     def _send_successful_message(self):
+        """
+        Sending HTML message if user granted permissions.
+        """
         with open(SUCCESS_MESSAGE_PATH) as f:
             message = f"HTTP/1.1 200 OK\r\n\r\n{f.read()}"
         self._client_socket.send(message.encode())
