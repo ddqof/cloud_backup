@@ -8,7 +8,7 @@ It's simple tool for backing your data up on Google Drive and Yandex.Disk cloud 
 
 ## Requirements
 
-* see `requirements.txt`
+See `requirements.txt`
 
 ## Examples of usage
 
