@@ -3,7 +3,6 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        prog="main.py",
         description=("""Tool for operate with your files on
          Google Drive or YandexDisk storage."""),
         epilog="""Author: Dmitry Podaruev <ddqof.vvv@gmail.com>""")
@@ -72,6 +71,7 @@ def parse_args():
         help="pass local filename")
     ul_parser.add_argument(
         "destination",
+        nargs="?",
         help="pass destination at remote storage")
 
     rm_parser = subparsers.add_parser(
