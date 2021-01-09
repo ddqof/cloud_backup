@@ -2,6 +2,7 @@ import errno
 import os
 import platform
 import pathlib
+import common_operations
 from defaults import (
     YADISK_SORT_KEYS,
     LIST_NEXT_PAGE_MSG,
@@ -10,7 +11,6 @@ from defaults import (
     DOWNLOADING_DIR_AS_ZIP_MSG, UNEXPECTED_VALUE_MSG,
 )
 from cloudbackup.yadisk import YaDisk
-import common_operations
 
 
 class YaDiskWrapper:
@@ -74,7 +74,7 @@ class YaDiskWrapper:
                 else:
                     break
 
-    def upload(self, file_path, destination="/") -> None:
+    def upload(self, file_path, destination) -> None:
         """
         Method allows to download file or directory using `YaDisk` class
         from `cloudbackup.yadisk`.
@@ -184,3 +184,4 @@ class YaDiskWrapper:
             download_link = self._yadisk.get_download_link(remote_path)
             with open(dl_path, "wb+") as f:
                 f.write(self._yadisk.download(download_link))
+
