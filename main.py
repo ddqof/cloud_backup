@@ -45,7 +45,13 @@ def main():
             )
             exit_msg = DOWNLOAD_COMPLETED_MSG
         elif args.operation == "ul":
-            wrapper.upload(args.local_file, destination=args.destination)
+            if isinstance(storage, GDrive) and args.destination is None:
+                target = "root"
+            elif isinstance(storage, YaDisk) and args.destination is None:
+                target = "/"
+            else:
+                target = args.destination
+            wrapper.upload(args.local_file, target)
             exit_msg = UPLOAD_COMPLETED_MSG
         elif args.operation == "rm":
             wrapper.remove(args.remote_file, permanently=args.permanently)
