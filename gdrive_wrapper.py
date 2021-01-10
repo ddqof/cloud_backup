@@ -2,11 +2,8 @@ import errno
 import os
 import shutil
 
-from common_operations import (
-    print_ow_dialog,
-    remove_remote_file,
-    put_file
-)
+from _base_wrapper import BaseWrapper
+
 from defaults import (
     GDRIVE_SORT_KEYS,
     ABORTED_MSG,
@@ -20,26 +17,23 @@ from cloudbackup.file_objects import GDriveFile
 from cloudbackup.gdrive import GDrive
 
 
-class GDriveWrapper:
+class GDriveWrapper(BaseWrapper):
     """
     Implements CLI interface to Google Drive API
     """
 
     def __init__(self, gdrive: GDrive):
-        self._gdrive = gdrive
+        super().__init__(gdrive)
 
-    def lsdir(self, start_id, order_key) -> None:
+    def lsdir(self, file_id, order_key) -> None:
         """
         Method allows to print each file in directory using `GDrive` class
         from `cloudbackup.gdrive`.
 
         Args:
-            start_id: start of `GDriveFileObject` id which content needs to
-             be listed.
             order_key: attribute used to sort the list of files.
         """
-        target = self.get_file_object_by_id(start_id)
-        if target is None:
+        if file_id is None:
             files = self.get_all_files(
                 owners=['me'],
                 order_by=GDRIVE_SORT_KEYS[order_key]
@@ -47,50 +41,26 @@ class GDriveWrapper:
             for file in files.values():
                 print(file)
         else:
-            if target.type == "file":
-                print(target)
-            else:
-                page_token = None
-                while True:
-                    page = self._gdrive.lsdir(
-                        dir_id=target.id,
-                        owners=['me'],
-                        page_size=20,
-                        order_by=GDRIVE_SORT_KEYS[order_key],
-                        page_token=page_token)
-                    for file in page.files:
-                        print(file)
-                    if page.next_page_token is not None:
-                        user_confirm = input(LIST_NEXT_PAGE_MSG)
-                        if user_confirm in {"y", "yes", ""}:
-                            page_token = page.next_page_token
-                            continue
-                        else:
-                            print(ABORTED_MSG)
-                            break
+            page_token = None
+            while True:
+                page = self._storage.lsdir(
+                    dir_id=file_id,
+                    owners=['me'],
+                    page_size=20,
+                    order_by=GDRIVE_SORT_KEYS[order_key],
+                    page_token=page_token)
+                for file in page.files:
+                    print(file)
+                if page.next_page_token is not None:
+                    user_confirm = input(LIST_NEXT_PAGE_MSG)
+                    if user_confirm in {"y", "yes", ""}:
+                        page_token = page.next_page_token
+                        continue
                     else:
+                        print(ABORTED_MSG)
                         break
-
-    def remove(self, start_id, permanently=False) -> None:
-        """
-        Method allows to remove file or directory using `GDrive` class
-        from `cloudbackup.gdrive`.
-
-        Args:
-            start_id: start of GDriveFileObject id.
-            permanently: Optional; whether to delete the file permanently
-             or move to the trash.
-
-        Raises:
-            ApiResponseException: an error occurred accessing API.
-        """
-        file = self.get_file_object_by_id(start_id)
-        remove_remote_file(
-            storage=self._gdrive,
-            file_name=file.name,
-            destination=file.id,
-            file_type=file.type,
-            permanently=permanently)
+                else:
+                    break
 
     def download(self, file, local_destination=None, overwrite=False) -> None:
         """
@@ -169,7 +139,7 @@ class GDriveWrapper:
         """
         all_files, page_token = [], None
         while True:
-            page_files, next_page_token = self._gdrive.lsdir(
+            page_files, next_page_token = self._storage.lsdir(
                 owners=owners,
                 page_size=1000,
                 order_by=order_by,
@@ -185,33 +155,6 @@ class GDriveWrapper:
             start_id = file.id[:5]
             files_with_id[start_id] = file
         return files_with_id
-
-    def get_file_object_by_id(self, start_id) -> GDriveFile or None:
-        """
-        Method used for user-friendly CLI interface that allows
-        type only start of file id to get full file id.
-
-        Args:
-            start_id: start of id
-        Returns:
-             GDriveFileObject that has id starts with given start_id
-        """
-        if start_id is None:
-            return None
-        if start_id == "root":
-            return GDriveFile(
-                {
-                    "name": "root",
-                    "id": "root",
-                    "mimeType": "application/vnd.google-apps.folder"
-                })
-        files = self.get_all_files()
-        try:
-            return files[start_id]
-        except KeyError:
-            raise FileNotFoundError(
-                f"There is no file starts with id: {start_id}."
-            )
 
     def upload(self, file_path, parents) -> None:
         """
@@ -230,11 +173,7 @@ class GDriveWrapper:
         """
         file_abs_path = os.path.abspath(file_path)
         if os.path.isfile(file_abs_path):
-            put_file(
-                storage=self._gdrive,
-                local_path=file_abs_path,
-                destination=parents
-            )
+            super().upload(file_abs_path, parents)
         elif os.path.isdir(file_abs_path):
             parents = {}
             tree = os.walk(file_abs_path)
@@ -245,16 +184,13 @@ class GDriveWrapper:
                 # os.path.split returns pair (head, tail) of path
                 dir_name = os.path.split(root)[-1]
                 print(UPLOADING_DIRECTORY_MSG.format(dir_name=root))
-                folder_id = self._gdrive.mkdir(dir_name,
-                                               parent_id=parent_id)
+                folder_id = self._storage.mkdir(dir_name,
+                                                parent_id=parent_id)
                 if not filenames:
                     continue
                 for file in filenames:
                     ul_path = os.path.join(root, file)
-                    put_file(
-                        storage=self._gdrive,
-                        local_path=ul_path,
-                        destination=folder_id)
+                    super().upload(ul_path, folder_id)
                 parents[root] = folder_id
         else:
             raise FileNotFoundError(

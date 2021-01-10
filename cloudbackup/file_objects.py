@@ -1,4 +1,24 @@
-class YaDiskFile:
+class RemoteFile:
+
+    def __init__(self, name, type, id):
+        self.name = name
+        self.type = type
+        self.id = id
+
+    def __str__(self):
+        if self.type == "dir":
+            file_type = "D"
+        elif self.type == "file":
+            file_type = "F"
+        else:
+            file_type = "S"
+        return f"[{file_type}] {self.name} ({self.id})"
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+
+class YaDiskFile(RemoteFile):
     """
     Class represents file object on YandexDisk storage
     """
@@ -11,11 +31,9 @@ class YaDiskFile:
             meta_inf: JSON contains raw file meta-information from
              YandexDisk API response
         """
-        self.name = meta_inf["name"]
+        super().__init__(meta_inf["name"], meta_inf["type"], meta_inf["path"])
         self.created = meta_inf["created"]
         self.modified = meta_inf["modified"]
-        self.path = meta_inf["path"]
-        self.type = meta_inf["type"]
         try:
             self.download_link = meta_inf["file"]
         except KeyError:
@@ -29,21 +47,8 @@ class YaDiskFile:
         except KeyError:
             pass
 
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__
 
-    def __str__(self):
-        if self.type == "dir":
-            file_type = "D"
-        else:
-            file_type = "F"
-        return f"[{file_type}] {self.name} [{self.path}]"
-
-    def __repr__(self):
-        return f"<YaDiskFileObject: {list(self.__dict__.values())}"
-
-
-class GDriveFile:
+class GDriveFile(RemoteFile):
     """
     Class represents file object on Google Drive storage
     """
@@ -56,27 +61,11 @@ class GDriveFile:
             meta_inf: JSON contains raw file meta-information from
              GoogleDrive API response
         """
-        self.id = meta_inf["id"]
-        self.name = meta_inf["name"]
         self.mime_type = meta_inf["mimeType"]
         if self.mime_type == "application/vnd.google-apps.folder":
-            self.type = "dir"
+            type = "dir"
         elif self.mime_type.startswith("application/vnd.google-apps"):
-            self.type = "g.suite"
+            type = "g.suite"
         else:
-            self.type = "file"
-
-    def __str__(self):
-        if self.type == "dir":
-            file_type = "D"
-        elif self.type == "file":
-            file_type = "F"
-        elif self.type == "g.suite":
-            file_type = "S"
-        return f"[{self.id[:5]}] [{file_type}] {self.name}"
-
-    def __repr__(self):
-        return f"<GDriveFileObject: {list(self.__dict__.values())}"
-
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+            type = "file"
+        super().__init__(meta_inf["name"], type, meta_inf["id"])
