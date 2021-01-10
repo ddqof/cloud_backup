@@ -41,3 +41,11 @@ With YaDisk simply type displayed path.
 * `./main.py gdrive rm -p 0xyzl` to permanently delete file with id starts with `0xyz`. 
 * `./main.py yadisk rm disk:/yadisk/path` to move file located at `/yadisk/path` on Yandex Disk storage to the trash.
 * `./main.py yadisk rm -p disk:/yadisk/path` to permanently file located at `/yadisk/path` on Yandex Disk storage to the trash.
+
+#### Trick for *nix users
+To extract id file you can pipe output of `main.py` like this:
+
+`./main.py gdrive ls | awk 'NR==1' | awk '{print $3}' | tr -d "()"`.
+
+`NR` is number of line you where you want to extract ID. You don't
+need to change anything else in this commands.
