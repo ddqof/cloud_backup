@@ -44,22 +44,14 @@ class YaDiskWrapper:
                 else:
                     break
             for file in all_files:
-                common_operations.print_remote_file(
-                    file_name=file.name,
-                    file_id=file.path,
-                    file_type=file.type
-                )
+                print(file)
         else:
             page = self._yadisk.lsdir(path,
                                       offset=offset,
                                       sort=YADISK_SORT_KEYS[order_key])
             while True:
                 for file in page.files:
-                    common_operations.print_remote_file(
-                        file_name=file.name,
-                        file_id=file.path,
-                        file_type=file.type
-                    )
+                    print(file)
                 offset += 20
                 page = self._yadisk.lsdir(
                     path,
@@ -184,4 +176,3 @@ class YaDiskWrapper:
             download_link = self._yadisk.get_download_link(remote_path)
             with open(dl_path, "wb+") as f:
                 f.write(self._yadisk.download(download_link))
-

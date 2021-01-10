@@ -4,7 +4,6 @@ import shutil
 
 from common_operations import (
     print_ow_dialog,
-    print_remote_file,
     remove_remote_file,
     put_file
 )
@@ -46,18 +45,10 @@ class GDriveWrapper:
                 order_by=GDRIVE_SORT_KEYS[order_key]
             )
             for file in files.values():
-                print_remote_file(
-                    file_name=file.name,
-                    file_id=file.id,
-                    file_type=file.type
-                )
+                print(file)
         else:
             if target.type == "file":
-                print_remote_file(
-                    file_name=target.name,
-                    file_id=target.id,
-                    file_type=target.type
-                )
+                print(target)
             else:
                 page_token = None
                 while True:
@@ -68,11 +59,7 @@ class GDriveWrapper:
                         order_by=GDRIVE_SORT_KEYS[order_key],
                         page_token=page_token)
                     for file in page.files:
-                        print_remote_file(
-                            file_name=file.name,
-                            file_id=file.id,
-                            file_type=file.type
-                        )
+                        print(file)
                     if page.next_page_token is not None:
                         user_confirm = input(LIST_NEXT_PAGE_MSG)
                         if user_confirm in {"y", "yes", ""}:

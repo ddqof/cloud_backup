@@ -1,7 +1,5 @@
 import os
 
-from colorama import Fore, Style
-
 from defaults import (
     OVERWRITING_DIRECTORY_MSG,
     OVERWRITING_FILE_MSG,
@@ -139,21 +137,3 @@ def put_file(
     with open(local_path, "rb") as f:
         file_data = f.read()
     storage.upload_file(link, file_data)
-
-
-def print_remote_file(file_name, file_id, file_type) -> None:
-    """
-    Colorized print of file on remote storage. Directories print in cyan color.
-    Files' color doesn't change.
-
-    Args:
-        file_name: name of file on remote storage
-        file_type: type of file on remote storage
-        file_id: file id on remote storage
-        (e.g. path on YaDisk one or file id on GDrive)
-    """
-    default_view = f"{file_name} ({file_id})"
-    if file_type == "dir":
-        print("".join(Fore.CYAN + default_view + Style.RESET_ALL))
-    else:
-        print(default_view)

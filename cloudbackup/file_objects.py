@@ -33,7 +33,11 @@ class YaDiskFile:
         return self.__dict__ == other.__dict__
 
     def __str__(self):
-        return f"YaDiskFileObject: {self.name}"
+        if self.type == "dir":
+            file_type = "D"
+        else:
+            file_type = "F"
+        return f"[{file_type}] {self.name} [{self.path}]"
 
     def __repr__(self):
         return f"<YaDiskFileObject: {list(self.__dict__.values())}"
@@ -63,7 +67,13 @@ class GDriveFile:
             self.type = "file"
 
     def __str__(self):
-        return f"GDriveFileObject: {self.name}"
+        if self.type == "dir":
+            file_type = "D"
+        elif self.type == "file":
+            file_type = "F"
+        elif self.type == "g.suite":
+            file_type = "S"
+        return f"[{self.id[:5]}] [{file_type}] {self.name}"
 
     def __repr__(self):
         return f"<GDriveFileObject: {list(self.__dict__.values())}"
