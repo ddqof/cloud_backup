@@ -71,7 +71,6 @@ def parse_args():
         help="pass local filename")
     ul_parser.add_argument(
         "destination",
-        nargs="?",
         help="pass destination at remote storage")
 
     rm_parser = subparsers.add_parser(
