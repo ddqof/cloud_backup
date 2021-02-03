@@ -32,20 +32,6 @@ class YaDiskFile(RemoteFile):
              YandexDisk API response
         """
         super().__init__(meta_inf["name"], meta_inf["type"], meta_inf["path"])
-        self.created = meta_inf["created"]
-        self.modified = meta_inf["modified"]
-        try:
-            self.download_link = meta_inf["file"]
-        except KeyError:
-            pass
-        try:
-            self.size = meta_inf["size"]
-        except KeyError:
-            pass
-        try:
-            self.mime_type = meta_inf["mime_type"]
-        except KeyError:
-            pass
 
 
 class GDriveFile(RemoteFile):
@@ -63,9 +49,9 @@ class GDriveFile(RemoteFile):
         """
         self.mime_type = meta_inf["mimeType"]
         if self.mime_type == "application/vnd.google-apps.folder":
-            type = "dir"
+            file_type = "dir"
         elif self.mime_type.startswith("application/vnd.google-apps"):
-            type = "g.suite"
+            file_type = "g.suite"
         else:
-            type = "file"
-        super().__init__(meta_inf["name"], type, meta_inf["id"])
+            file_type = "file"
+        super().__init__(meta_inf["name"], file_type, meta_inf["id"])
