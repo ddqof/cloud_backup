@@ -122,7 +122,7 @@ class YaDiskWrapper(BaseWrapper):
         if local_destination is None:
             dl_path = p.name
         else:
-            dl_path = PurePath(local_destination) / p.name
+            dl_path = PurePath(local_destination, p.name)
         if file.type == "dir":
             dl_path = dl_path.with_suffix(".zip")
             download_msg = DOWNLOADING_DIR_AS_ZIP_MSG.format(

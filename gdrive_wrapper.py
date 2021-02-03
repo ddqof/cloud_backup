@@ -1,6 +1,7 @@
 import errno
 import os
 import shutil
+from pathlib import PurePath, Path
 
 from _base_wrapper import BaseWrapper
 
@@ -63,34 +64,32 @@ class GDriveWrapper(BaseWrapper):
         if local_destination is None:
             dl_path = file.name
         else:
-            dl_path = os.path.join(local_destination, file.name)
-        dl_path = os.path.abspath(dl_path)
+            dl_path = PurePath(local_destination, file.name)
+        dl_path = Path(dl_path).resolve()
         if file.type == "file":
             dl_msg = DOWNLOADING_FILE_MSG.format(file_name=dl_path)
         elif file.type == "dir":
             dl_msg = MAKING_DIRECTORY_MSG.format(dir_name=dl_path)
         else:
             dl_msg = SKIP_G_SUITE_FILE_MSG.format(file_name=dl_path)
-        if ov and os.path.exists(dl_path):
-            dl_msg = super().get_ow_msg(dl_path)
-        if not ov and os.path.exists(dl_path):
-            raise FileExistsError(
-                errno.EEXIST,
-                os.strerror(errno.EEXIST),
-                dl_path
-            )
+        if dl_path.exists():
+            if ov:
+                dl_msg = super().get_ow_msg(dl_path)
+            else:
+                raise FileExistsError(
+                    errno.EEXIST,
+                    os.strerror(errno.EEXIST),
+                    dl_path
+                )
         else:
             print(dl_msg)
             if file.type == "file":
                 file_bytes = self._storage.download(file.id)
-                with open(dl_path, "wb+") as f:
-                    f.write(file_bytes)
+                dl_path.write_bytes(file_bytes)
             elif file.type == "dir":
-                if ov and os.path.exists(dl_path):
+                if dl_path.exists():
                     shutil.rmtree(dl_path)
-                    os.mkdir(dl_path)
-                else:
-                    os.mkdir(dl_path)
+                os.mkdir(dl_path)
                 next_page_token = None
                 while True:
                     page = self._storage.lsdir(file.id,
@@ -109,22 +108,20 @@ class GDriveWrapper(BaseWrapper):
         """
         Upload file or directory by path.
         """
-        file_abs_path = os.path.abspath(file_path)
-        if os.path.isfile(file_abs_path):
-            super().put_file(file_abs_path, parents)
-        elif os.path.isdir(file_abs_path):
+        p = Path(file_path).resolve()
+        if p.is_file():
+            super().put_file(p, parents)
+        elif p.is_dir():
             parents = {}
-            tree = os.walk(file_abs_path)
+            tree = os.walk(p)
             for root, dirs, filenames in tree:
-                if root.endswith(os.path.sep):
-                    root = root[:-1]
-                parent_id = parents[os.path.split(root)[0]] if parents else []
-                dir_name = os.path.split(root)[-1]
+                root_path = Path(root)
+                parent_id = parents[root_path.parent] if parents else None
                 print(UPLOADING_DIRECTORY_MSG.format(dir_name=root))
-                folder_id = self._storage.mkdir(dir_name,
+                folder_id = self._storage.mkdir(root_path.name,
                                                 parent_id=parent_id)
                 for file in filenames:
-                    ul_path = os.path.join(root, file)
+                    ul_path = PurePath(root, file)
                     super().put_file(ul_path, folder_id)
                 parents[root] = folder_id
         else:
