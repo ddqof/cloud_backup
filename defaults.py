@@ -30,7 +30,6 @@ G_SUITE_FILES_TYPE = "application/vnd.google-apps"
 CONFIRM_CHOICE_STRING = "([y]/n) "
 ABORTED_MSG = "Aborted"
 OW_ACCESS_DENIED_MSG = "No access was granted to overwrite"
-UNEXPECTED_VALUE_MSG = "`{var_name}` has unexpected value: {value}"
 RM_ACCESS_DENIED_MSG = "No access was granted to remove"
 
 
