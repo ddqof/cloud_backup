@@ -3,6 +3,8 @@ import json
 import os
 import mimetypes
 import requests
+from requests import Response
+
 from ._authenticator import Authenticator
 from .file_objects import GDriveFile
 from .exceptions import ApiResponseException
@@ -41,8 +43,7 @@ class GDrive:
         file_data = {"alt": "media"}
         r = requests.get(
             f"https://www.googleapis.com/drive/v3/files/{file_id}",
-            params=file_data,
-            headers=self._auth_headers
+            params=file_data, headers=self._auth_headers
         )
         GDrive._check_status(r)
         return r.content
@@ -173,20 +174,6 @@ class GDrive:
             )
         GDrive._check_status(r)
 
-    def _empty_trash(self) -> None:
-        """
-        Permanently deletes all files in the trash.
-
-        Raises:
-            ApiResponseException: an error occurred accessing API.
-        """
-        r = requests.request(
-            "DELETE",
-            "https://www.googleapis.com/drive/v3/files/trash",
-            headers=self._auth_headers
-        )
-        GDrive._check_status(r)
-
     def get_upload_link(self, file_path, parent_id="root") -> str:
         """
         Send request to Google Drive API for getting link for file upload.
@@ -231,48 +218,23 @@ class GDrive:
         Raises:
             ApiResponseException: If API response has unsuccessful status code.
         """
-        r = requests.put(upload_link, data=file_data)
-        GDrive._check_status(r)
-
-    def upload_chunk(
-            self,
-            link,
-            file_data,
-            uploaded_size,
-            chunk_size,
-            file_size
-    ) -> namedtuple("UploadStatus", ["code", "received"]):
-        """
-        Upload chunk of file to the Google Drive using upload link
-         from `get_upload_link` method.
-
-        Returns:
-            |namedtuple| UploadStatus("code", "received"). If code equals 200
-             upload is completed, if 308 then server received chunk and you
-             can proceed uploading another chunks. `received` field
-             contains bytes that was received successfully by Google Drive API.
-
-        Raises:
-            ApiResponseException: If API response has unsuccessful status code.
-        """
-        bytes_range = (f"{str(uploaded_size)}-"
-                       f"{str(uploaded_size + chunk_size - 1)}/"
-                       f"{file_size}")
-        chunk_info = {
-            "Content-Length": chunk_size,
-            "Content-Range": f"bytes {bytes_range}"
-        }
-        r = requests.put(link, data=file_data, headers=chunk_info)
-        GDrive._check_status(r)
-        UploadStatus = namedtuple("UploadStatus", ["code", "received"])
-        return UploadStatus(
-            r.status_code,
-            int(r.headers["range"].split("-")[1]) + 1
+        r = requests.put(
+            upload_link,
+            data=file_data,
+            headers=self._auth_headers
         )
-        # range header looks like "bytes=0-n", where n - received bytes
+        GDrive._check_status(r)
+
+    def get_file(self, file_id) -> GDriveFile:
+        r = requests.get(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}",
+            headers=self._auth_headers
+        )
+        GDrive._check_status(r)
+        return GDriveFile(r.json())
 
     @staticmethod
-    def _check_status(api_response) -> None:
+    def _check_status(api_response: Response) -> None:
         """
         This method used for checking the response status code
         after every API query.

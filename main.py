@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 
 import sys
-from time import perf_counter
-from colorama import init
 
-from _base_wrapper import BaseWrapper
-from cloudbackup.gdrive import GDrive
-from cloudbackup.yadisk import YaDisk
 from cloudbackup.exceptions import ApiResponseException
 from defaults import (DOWNLOAD_COMPLETED_MSG,
-                      UPLOAD_COMPLETED_MSG, UNEXPECTED_VALUE_MSG)
+                      UPLOAD_COMPLETED_MSG)
 from parser import parse_args
 from gdrive_wrapper import GDriveWrapper
 from yadisk_wrapper import YaDiskWrapper
@@ -17,14 +12,11 @@ from yadisk_wrapper import YaDiskWrapper
 
 def main():
     exit_msg = None
-    init()
     args = parse_args()
     if args.storage == "gdrive":
-        storage = GDrive()
-        wrapper = GDriveWrapper(GDrive())
+        wrapper = GDriveWrapper()
     else:
-        storage = YaDisk()
-        wrapper = YaDiskWrapper(YaDisk())
+        wrapper = YaDiskWrapper()
     try:
         if args.operation == "ls":
             wrapper.lsdir(args.remote_file, order_key=args.order_by)
