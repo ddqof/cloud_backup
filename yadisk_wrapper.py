@@ -124,16 +124,11 @@ class YaDiskWrapper(BaseWrapper):
         """
         Download file located at remote_path to local_destination.
         """
-        if remote_path.startswith("disk:/"):
-            path_chunks = remote_path[5:].split("/")
-        else:
-            path_chunks = remote_path.split("/")
-        remote_file_object = self._storage.lsdir(remote_path).file_info
+        path_chunks = remote_path.split("/")
+        remote_file_object = self._storage.get_file(remote_path)
         if local_destination is None:
             dl_path = path_chunks[-1]
         else:
-            if not local_destination.endswith(os.path.sep):
-                local_destination += os.path.sep
             dl_path = os.path.join(local_destination, path_chunks[-1])
         dl_path = os.path.abspath(dl_path)
         if remote_file_object.type == "dir":
@@ -141,14 +136,8 @@ class YaDiskWrapper(BaseWrapper):
             download_msg = DOWNLOADING_DIR_AS_ZIP_MSG.format(
                 dir_name=remote_path, file_name=dl_path
             )
-        elif remote_file_object.type == "file":
-            download_msg = DOWNLOADING_FILE_MSG.format(file_name=dl_path)
         else:
-            error_msg = UNEXPECTED_VALUE_MSG.format(
-                var_name=f"{remote_file_object=}".split("=")[0],
-                value=remote_file_object,
-            )
-            raise ValueError(error_msg)
+            download_msg = DOWNLOADING_FILE_MSG.format(file_name=dl_path)
         if overwrite and os.path.exists(dl_path):
             super().print_ow_dialog(dl_path)
         if not overwrite and os.path.exists(dl_path):
