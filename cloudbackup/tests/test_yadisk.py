@@ -1,3 +1,5 @@
+import mimetypes
+
 import pytest
 import json
 from unittest.mock import patch, Mock
@@ -283,19 +285,24 @@ def test_mkdir(yadisk):
 
 @responses.activate
 def test_get_upload_link(yadisk):
-    path = "/test_file.txt"
-    url_keys = {"path": path}
+    filename = "_yadisk_api_responses.py"
+    name = f'"name": "{filename}"'
+    mime_type = f'"mime_type": "{mimetypes.guess_type(filename)[0]}"'
+    req_params = {
+        "path": "/",
+        "fields": "{" + name + ", " + mime_type + "}"
+    }
     responses.add(
         responses.GET,
         url=f"https://cloud-api.yandex.net/v1/disk/resources/upload?"
-            f"{urlencode(url_keys)}",
+            f"{urlencode(req_params)}",
         content_type="application/json",
         json={"href": "some_upload_link"}
     )
-    yadisk.get_upload_link(path)
+    yadisk.get_upload_link(filename, "/")
     assert len(responses.calls) == 1
     assert "Authorization" in responses.calls[0].request.headers
-    assert responses.calls[0].request.params == url_keys
+    assert responses.calls[0].request.params == req_params
 
 
 @responses.activate
@@ -374,27 +381,6 @@ def test_get_download_link_for_not_downloadable_file(yadisk):
     with pytest.raises(FileIsNotDownloadableException) as api_exc:
         yadisk.get_download_link(path)
     assert str(api_exc.value) == f"File: `{path}` isn't downloadable."
-
-
-@responses.activate
-def test_get_upload_link_for_root_dir(yadisk):
-    path = "/"
-    url_keys = {"path": path}
-    responses.add(
-        responses.GET,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources/upload?"
-            f"{urlencode(url_keys)}",
-        json={
-            "message": "Указанного пути \"/\" не существует.",
-            "description": "Specified path \"/\" doesn't exists.",
-            "error": "DiskPathDoesntExistsError"
-        },
-        status=409
-    )
-    with pytest.raises(ApiResponseException) as api_exc:
-        yadisk.get_upload_link(path)
-    assert str(api_exc.value) == "Specified path \"/\" doesn't exists."
-    assert api_exc.value.status_code == 409
 
 
 @responses.activate
