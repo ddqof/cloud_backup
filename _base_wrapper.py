@@ -27,7 +27,7 @@ class BaseWrapper(ABC):
         self._storage = storage
 
     @staticmethod
-    def print_ow_dialog(path):
+    def get_ow_msg(path) -> str:
         if os.path.isfile(path):
             overwrite_confirm = OVERWRITE_FILE_REQUEST_MSG.format(file_name=path)
             exit_msg = OVERWRITING_FILE_MSG.format(file_name=path)
@@ -36,7 +36,7 @@ class BaseWrapper(ABC):
             exit_msg = OVERWRITING_DIRECTORY_MSG.format(dir_name=path)
         user_confirm = input(overwrite_confirm)
         if user_confirm in {"y", "yes", ""}:
-            print(exit_msg)
+            return exit_msg
         else:
             raise PermissionError(OW_ACCESS_DENIED_MSG)
 
@@ -88,14 +88,17 @@ class BaseWrapper(ABC):
         else:
             raise PermissionError(RM_ACCESS_DENIED_MSG)
 
-        @abstractmethod
-        def download():
-            ...
+    def get_file(self, file_id):
+        return self._storage.get_file(file_id)
 
-        @abstractmethod
-        def lsdir():
-            ...
+    @abstractmethod
+    def download(self, file_id, local_destination, ov):
+        ...
 
-        @abstractmethod
-        def upload():
-            ...
+    @abstractmethod
+    def lsdir(self, file_id, order_key):
+        ...
+
+    @abstractmethod
+    def upload(self, file_id, destination):
+        ...

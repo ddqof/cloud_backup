@@ -1,9 +1,9 @@
 import errno
 import os
 import platform
-import pathlib
 
 from _base_wrapper import BaseWrapper
+from pathlib import PurePath, Path, PureWindowsPath
 from cloudbackup.yadisk import YaDisk
 from defaults import (
     YADISK_SORT_KEYS,
@@ -110,44 +110,37 @@ class YaDiskWrapper(BaseWrapper):
         if platform.system() in {"Darwin", "Linux"}:
             return path
         elif platform.system() == "Windows":
-            w_path = pathlib.PureWindowsPath(path)
-            w_path.as_posix()
+            return PureWindowsPath(path).as_posix()
         else:
             raise ValueError
 
-    def download(
-            self,
-            remote_path,
-            local_destination=None,
-            overwrite=False
-    ) -> None:
+    def download(self, file, local_destination=None, ov=False) -> None:
         """
-        Download file located at remote_path to local_destination.
+        Download file on remote to local_destination.
         """
-        path_chunks = remote_path.split("/")
-        remote_file_object = self._storage.get_file(remote_path)
+        p = PurePath(file.id)
         if local_destination is None:
-            dl_path = path_chunks[-1]
+            dl_path = p.name
         else:
-            dl_path = os.path.join(local_destination, path_chunks[-1])
-        dl_path = os.path.abspath(dl_path)
-        if remote_file_object.type == "dir":
-            dl_path += ".zip"
+            dl_path = PurePath(local_destination) / p.name
+        if file.type == "dir":
+            dl_path = dl_path.with_suffix(".zip")
             download_msg = DOWNLOADING_DIR_AS_ZIP_MSG.format(
-                dir_name=remote_path, file_name=dl_path
+                dir_name=file.id, file_name=dl_path
             )
         else:
             download_msg = DOWNLOADING_FILE_MSG.format(file_name=dl_path)
-        if overwrite and os.path.exists(dl_path):
-            super().print_ow_dialog(dl_path)
-        if not overwrite and os.path.exists(dl_path):
-            raise FileExistsError(
-                errno.EEXIST,
-                os.strerror(errno.EEXIST),
-                dl_path
-            )
+        if Path(dl_path).exists():
+            if ov:
+                download_msg = super().get_ow_msg(dl_path)
+            else:
+                raise FileExistsError(
+                    errno.EEXIST,
+                    os.strerror(errno.EEXIST),
+                    dl_path
+                )
         else:
             print(download_msg)
-            download_link = self._storage.get_download_link(remote_path)
+            download_link = self._storage.get_download_link(file.id)
             with open(dl_path, "wb+") as f:
                 f.write(self._storage.download(download_link))

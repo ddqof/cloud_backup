@@ -56,36 +56,40 @@ class GDriveWrapper(BaseWrapper):
             else:
                 break
 
-    def download(self, file_id, local_destination=None, overwrite=False) -> None:
+    def download(self, file, local_destination=None, ov=False) -> None:
         """
         Download file or directory by id of GDrive file.
         """
-        file = self._storage.get_file(file_id)
         if local_destination is None:
             dl_path = file.name
         else:
             dl_path = os.path.join(local_destination, file.name)
         dl_path = os.path.abspath(dl_path)
-        if overwrite and os.path.exists(dl_path):
-            super().print_ow_dialog(dl_path)
-        if not overwrite and os.path.exists(dl_path):
+        if file.type == "file":
+            dl_msg = DOWNLOADING_FILE_MSG.format(file_name=dl_path)
+        elif file.type == "dir":
+            dl_msg = MAKING_DIRECTORY_MSG.format(dir_name=dl_path)
+        else:
+            dl_msg = SKIP_G_SUITE_FILE_MSG.format(file_name=dl_path)
+        if ov and os.path.exists(dl_path):
+            dl_msg = super().get_ow_msg(dl_path)
+        if not ov and os.path.exists(dl_path):
             raise FileExistsError(
                 errno.EEXIST,
                 os.strerror(errno.EEXIST),
                 dl_path
             )
         else:
+            print(dl_msg)
             if file.type == "file":
-                print(DOWNLOADING_FILE_MSG.format(file_name=dl_path))
                 file_bytes = self._storage.download(file.id)
                 with open(dl_path, "wb+") as f:
                     f.write(file_bytes)
             elif file.type == "dir":
-                if overwrite and os.path.exists(dl_path):
+                if ov and os.path.exists(dl_path):
                     shutil.rmtree(dl_path)
                     os.mkdir(dl_path)
                 else:
-                    print(MAKING_DIRECTORY_MSG.format(dir_name=dl_path))
                     os.mkdir(dl_path)
                 next_page_token = None
                 while True:
@@ -96,12 +100,10 @@ class GDriveWrapper(BaseWrapper):
                     for file in page.files:
                         self.download(file,
                                       local_destination=dl_path,
-                                      overwrite=overwrite)
+                                      ov=ov)
                     next_page_token = page.next_page_token
                     if next_page_token is None:
                         break
-            else:
-                print(SKIP_G_SUITE_FILE_MSG.format(file_name=dl_path))
 
     def upload(self, file_path, parents) -> None:
         """

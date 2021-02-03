@@ -325,7 +325,7 @@ def test_download_to_custom_directory(tmpdir, capsys, wrapper):
     test_dir = tmpdir.mkdir("temp_dir")
     assert os.path.exists(test_dir)
     wrapper._gdrive.download = Mock(return_value=b"hello from testfile")
-    wrapper.download(remote_target, test_dir, overwrite=True)
+    wrapper.download(remote_target, test_dir, ov=True)
     wrapper._gdrive.download.assert_called_once_with(remote_target.id)
     download_dest = os.path.join(test_dir, remote_target.name)
     assert os.path.exists(download_dest)
@@ -345,7 +345,7 @@ def test_download_overwrite(tmpdir, capsys, wrapper):
         wrapper._gdrive.download = Mock(
             return_value=b"erased data"
         )
-        wrapper.download(remote_target, test_file.dirname, overwrite=True)
+        wrapper.download(remote_target, test_file.dirname, ov=True)
         dowload_dest = os.path.abspath(os.path.join(test_file.dirname, remote_target.name))
         ow_mock.assert_called_once_with(dowload_dest)
         with open(dowload_dest, "rb") as f:

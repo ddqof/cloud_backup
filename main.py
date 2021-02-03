@@ -22,9 +22,9 @@ def main():
             wrapper.lsdir(args.remote_file, order_key=args.order_by)
         elif args.operation == "dl":
             wrapper.download(
-                args.remote_file,
+                wrapper.get_file(args.remote_file),
                 local_destination=args.destination,
-                overwrite=args.overwrite
+                ov=args.overwrite
             )
             exit_msg = DOWNLOAD_COMPLETED_MSG
         elif args.operation == "ul":
