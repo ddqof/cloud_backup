@@ -12,35 +12,69 @@ See `requirements.txt`
 
 ## Examples of usage
 
-For working with GoogleDrive files id, type exactly first 5 symbols of displayed id. 
-With YaDisk simply type displayed path.
+### Listing
 
-### List
-* `./main.py gdrive ls` to list all files (directories marked cyan color) on Google Drive storage.
-* `./main.py gdrive ls root` to list all files in `root` directory on Goole Drive storage.
-* `./main.py gdrive ls 0xyzl` to list all files in `0xyz` directory on Google Drive storage.
-* `./main.py yadisk ls root` to list all files on YaDisk storage excluding directories.
-* `./main.py yadisk ls /home` to list all files in `/home` directory on YaDisk storage.
+Directories marked as `[D]`, files marked as `[F]`, G.Suite files marked as 
+`[S]` in CLI output.
+
+#### GDrive
+
+* `./main.py gdrive ls` to list entire content (including directories and files).
+* `./main.py gdrive ls root` to list content in directory that has `root` id.
+
+
+#### YaDisk
+
+* `./main.py yadisk ls` to list all files on storage (excluding directories).
+* `./main.py yadisk ls disk:/home` to list content in `/home` directory.
 
 
 ### Upload
-* `./main.py gdrive ul /home/user` to upload directory `/home/user` to root directory.
-* `./main.py gdrive /home/user/test.py` to upload `test.py` file to root directory.
-* same in Yandex Disk case
 
+#### GDrive
+
+* `./main.py gdrive ul /home/user root` to upload directory `/home/user` to
+ `root` directory.
+ 
+* `./main.py gdrive /home/user/test.py root` to upload `test.py` file to
+ `root` directory.
+ 
+#### YaDisk
+
+* `./main.py yadisk ul /home/user /` to upload directory `/home/user` to
+ `/` directory.
+ 
+* `./main.py yadisk /home/user/test.py /` to upload `test.py` file to
+ `/` directory.
+ 
+ 
 ### Downloading
-* `./main.py gdrive dl 0xyzl` to download file with id starts with `0xyz` in current working directory
-* `./main.py gdrive dl 0xyzl /home/user` to download file with id starts with `0xyz` to `/home/user` directory
-* `./main.py yadisk dl disk:/yadisk/path` to download file located at `/yadisk/path` on Yandex Disk storage.
-* `./main.py yadisk dl disk:/yadisk/path /home/user/Downloads` to download file located at
- `/yadisk/path` on Yandex Disk storage to `/home/user/Downloads` directory.
+
+#### GDrive
+
+* `./main.py gdrive dl 1n7bDl79J3xf3E2JEENtYqb7nvSdkFof4l .` to download file
+ that has id `1n7bDl79J3xf3E2JEENtYqb7nvSdkFof4` in current working directory
+
+* `./main.py yadisk dl disk:/yadisk/path .` to download file located at 
+`/yadisk/path` to current working directory.
 
 
 ### Delete
-* `./main.py gdrive rm 0xyzl` to move file or directory with id starts with `0xyz` to the trash.
-* `./main.py gdrive rm -p 0xyzl` to permanently delete file with id starts with `0xyz`. 
-* `./main.py yadisk rm disk:/yadisk/path` to move file located at `/yadisk/path` on Yandex Disk storage to the trash.
-* `./main.py yadisk rm -p disk:/yadisk/path` to permanently file located at `/yadisk/path` on Yandex Disk storage to the trash.
+
+#### GDrive
+
+* `./main.py gdrive rm 1n7bDl79J3xf3E2JEENtYqb7nvSdkFof4l` to move file that
+has id `1n7bDl79J3xf3E2JEENtYqb7nvSdkFof4l` to the Trash.
+ 
+* `./main.py gdrive rm 1n7bDl79J3xf3E2JEENtYqb7nvSdkFof4l -p` to permanently
+delete file that has provided id.
+ 
+#### YaDisk
+
+* `./main.py yadisk rm disk:/yadisk/path` to move file located at 
+`/yadisk/path` to the trash.
+* `./main.py yadisk rm -p disk:/yadisk/path` to permanently delete 
+file located at `/yadisk/path`.
 
 #### Trick for *nix users
 To extract file id you can pipe output of `main.py` like this:
