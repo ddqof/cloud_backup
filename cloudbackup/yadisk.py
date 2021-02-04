@@ -65,10 +65,7 @@ class YaDisk:
             headers=self._auth_headers
         )
         if r.status_code != 200:
-            raise ApiResponseException(
-                r.status_code,
-                r.json()["description"]
-            )
+            raise ApiResponseException(r.status_code, r.json()["description"])
         Page = namedtuple("Page", ["file_info", "files"])
         json_r = r.json()
         try:
@@ -132,10 +129,7 @@ class YaDisk:
             headers=self._auth_headers
         )
         if r.status_code != 200:
-            raise ApiResponseException(
-                r.status_code,
-                r.json()["description"]
-            )
+            raise ApiResponseException(r.status_code, r.json()["description"])
         return [YaDiskFile(file) for file in r.json()["items"]]
 
     def get_download_link(self, path):
@@ -151,20 +145,17 @@ class YaDisk:
         Raises:
              ApiResponseException: an error occurred accessing API
         """
-        request_for_link = requests.get(
+        r = requests.get(
             "https://cloud-api.yandex.net/v1/disk/resources/download",
             headers=self._auth_headers,
             params={"path": path}
         )
-        if request_for_link.status_code != 200:
-            raise ApiResponseException(
-                request_for_link.status_code,
-                request_for_link.json()["description"]
-            )
-        request_for_link = request_for_link.json()
-        if not request_for_link["href"]:
+        if r.status_code != 200:
+            raise ApiResponseException(r.status_code, r.json()["description"])
+        r = r.json()
+        if not r["href"]:
             raise FileIsNotDownloadableException(path)
-        return request_for_link["href"]
+        return r["href"]
 
     def download(self, download_link) -> bytes:
         """
@@ -181,16 +172,13 @@ class YaDisk:
             FileIsNotDownloadable: an error occurred getting link for file with
              provided `path` argument.
         """
-        download_request = requests.get(
+        r = requests.get(
             download_link,
             headers=self._auth_headers
         )
-        if download_request.status_code != 200:
-            raise ApiResponseException(
-                download_request.status_code,
-                download_request.json()["description"]
-            )
-        return download_request.content
+        if r.status_code != 200:
+            raise ApiResponseException(r.status_code, r.json()["description"])
+        return r.content
 
     def get_upload_link(self, file_path, destination) -> str:
         """
@@ -233,16 +221,13 @@ class YaDisk:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        upload_request = requests.put(
+        r = requests.put(
             upload_link,
             data=file_data,
             headers=self._auth_headers
         )
-        if upload_request.status_code not in {201, 202}:
-            raise ApiResponseException(
-                upload_request.status_code,
-                upload_request.json()["description"]
-            )
+        if r.status_code not in {201, 202}:
+            raise ApiResponseException(r.status_code, r.json()["description"])
 
     def mkdir(self, destination) -> None:
         """
@@ -262,10 +247,7 @@ class YaDisk:
             headers=self._auth_headers
         )
         if r.status_code != 201:
-            raise ApiResponseException(
-                r.status_code,
-                r.json()["description"]
-            )
+            raise ApiResponseException(r.status_code, r.json()["description"])
 
     def remove(self, path, permanently=False) -> None:
         """
@@ -293,7 +275,4 @@ class YaDisk:
             headers=self._auth_headers
         )
         if r.status_code not in {202, 204}:
-            raise ApiResponseException(
-                r.status_code,
-                r.json()["description"]
-            )
+            raise ApiResponseException(r.status_code, r.json()["description"])
