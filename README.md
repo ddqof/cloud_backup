@@ -41,10 +41,10 @@ Directories marked as `[D]`, files marked as `[F]`, G.Suite files marked as
  
 #### YaDisk
 
-* `./main.py yadisk ul /home/user /` to upload directory `/home/user` to
+* `./main.py yadisk ul disk:/home/user /` to upload directory `/home/user` to
  `/` directory.
  
-* `./main.py yadisk /home/user/test.py /` to upload `test.py` file to
+* `./main.py yadisk disk:/home/user/test.py /` to upload `test.py` file to
  `/` directory.
  
  
