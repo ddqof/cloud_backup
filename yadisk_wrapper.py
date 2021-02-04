@@ -85,9 +85,8 @@ class YaDiskWrapper(BaseWrapper):
                 print(UPLOADING_DIRECTORY_MSG.format(dir_name=root))
                 self._storage.mkdir(target)
                 for filename in filenames:
-                    current_ul_path = Path(root, filename)
                     super().put_file(
-                        local_path=current_ul_path,
+                        local_path=Path(root, filename),
                         destination=PurePosixPath(str(target), filename)
                     )
         else:

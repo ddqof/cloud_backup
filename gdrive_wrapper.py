@@ -95,7 +95,7 @@ class GDriveWrapper(BaseWrapper):
         elif file.type == "dir":
             if dl_path.exists():
                 shutil.rmtree(dl_path)
-            os.mkdir(dl_path)
+            dl_path.mkdir()
             next_page_token = None
             while True:
                 page = self._storage.lsdir(
@@ -131,8 +131,7 @@ class GDriveWrapper(BaseWrapper):
                     parent_id=parent_id
                 )
                 for file in filenames:
-                    ul_path = PurePath(root, file)
-                    super().put_file(local_path=ul_path, destination=folder_id)
+                    super().put_file(local_path=Path(root, file), destination=folder_id)
                 parents[root_path] = folder_id
         else:
             raise FileNotFoundError(
