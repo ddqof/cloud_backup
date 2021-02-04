@@ -50,11 +50,7 @@ class BaseWrapper(ABC):
             file_data = f.read()
         self._storage.upload_file(link, file_data)
 
-    def remove(
-            self,
-            file_id,
-            permanently=False
-    ) -> None:
+    def remove(self, file_id, permanently=False) -> None:
         """
         Remove file or directory on GoogleDrive or YandexDisk storage.
         """
@@ -102,3 +98,4 @@ class BaseWrapper(ABC):
     @abstractmethod
     def upload(self, file_id, destination):
         ...
+

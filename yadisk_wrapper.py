@@ -1,9 +1,8 @@
 import errno
 import os
-import platform
 
 from _base_wrapper import BaseWrapper
-from pathlib import PurePath, Path, PureWindowsPath
+from pathlib import PurePath, Path, PureWindowsPath, PurePosixPath
 from cloudbackup.yadisk import YaDisk
 from defaults import (
     YADISK_SORT_KEYS,
@@ -24,8 +23,8 @@ class YaDiskWrapper(BaseWrapper):
 
     def lsdir(self, path, order_key) -> None:
         """
-        Prints content of directory or file itself. Prints all files
-         excluding directories if path is not provided.
+        Prints content of `path`. Prints all files
+         excluding directories if path is None.
          Otherwise prints files page by page.
         """
         offset = 0
@@ -65,62 +64,49 @@ class YaDiskWrapper(BaseWrapper):
                 else:
                     break
 
-    def upload(self, file_path, destination) -> None:
+    def upload(self, filename, destination) -> None:
         """
-        Upload file located at file_path to destination. Prints absolute
+        Upload file located at `filename` to `destination`. Prints absolute
          file path while uploading because of '.' path.
         """
-        if destination.endswith("/"):
-            destination = destination[:-1]
-        abs_file_path = os.path.abspath(file_path)
-        if os.path.isfile(abs_file_path):
+
+        # TODO: fix this method
+        file_path = Path(filename)
+        if file_path.is_file():
             super().put_file(
-                abs_file_path,
-                f"{destination}/{os.path.basename(file_path)}"
+                file_path,
+                PurePosixPath(destination, file_path.name)
             )
-        elif os.path.isdir(abs_file_path):
-            if abs_file_path.endswith(os.path.sep):
-                abs_file_path = abs_file_path[:-1]
-            posix_base = os.path.dirname(YaDiskWrapper._get_posix_path(abs_file_path))
-            tree = os.walk(abs_file_path)
+        elif file_path.is_dir():
+            posix_parent = PurePosixPath(file_path).name
+            tree = os.walk(file_path)
             for root, dirs, filenames in tree:
-                current_dir = root.replace(posix_base, "")
-                target = f"{destination}{current_dir}"
+                root_path = Path(root)
+                target = PurePosixPath(destination, root_path.name)
                 print(UPLOADING_DIRECTORY_MSG.format(dir_name=root))
                 self._storage.mkdir(target)
                 if not filenames:
                     continue
                 for filename in filenames:
-                    current_ul_path = os.path.join(root, filename)
+                    current_ul_path = Path(root, filename)
                     super().put_file(
                         current_ul_path,
-                        f"{target}/{filename}"
+                        PurePosixPath(str(target), filename)
                     )
         else:
             raise FileNotFoundError(
                 errno.ENOENT,
                 os.strerror(errno.ENOENT),
-                abs_file_path)
-
-    @staticmethod
-    def _get_posix_path(path):
-        """
-        Get posix path by any other path. Used for platform independence.
-        """
-        if platform.system() in {"Darwin", "Linux"}:
-            return path
-        elif platform.system() == "Windows":
-            return PureWindowsPath(path).as_posix()
-        else:
-            raise ValueError
+                file_path)
 
     def download(self, file, local_destination=None, ov=False) -> None:
         """
         Download file on remote to local_destination.
         """
+
         p = PurePath(file.id)
         if local_destination is None:
-            dl_path = p.name
+            dl_path = PurePath(p.name)
         else:
             dl_path = PurePath(local_destination, p.name)
         if file.type == "dir":
@@ -130,7 +116,8 @@ class YaDiskWrapper(BaseWrapper):
             )
         else:
             download_msg = DOWNLOADING_FILE_MSG.format(file_name=dl_path)
-        if Path(dl_path).exists():
+        dl_path = Path(dl_path)
+        if dl_path.exists():
             if ov:
                 download_msg = super().get_ow_msg(dl_path)
             else:
@@ -142,5 +129,4 @@ class YaDiskWrapper(BaseWrapper):
         else:
             print(download_msg)
             download_link = self._storage.get_download_link(file.id)
-            with open(dl_path, "wb+") as f:
-                f.write(self._storage.download(download_link))
+            dl_path.write_bytes(self._storage.download(download_link))
