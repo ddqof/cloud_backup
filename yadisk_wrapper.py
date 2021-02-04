@@ -69,20 +69,17 @@ class YaDiskWrapper(BaseWrapper):
         Upload file located at `filename` to `destination`. Prints absolute
          file path while uploading because of '.' path.
         """
-
-        # TODO: fix this method
         file_path = Path(filename)
         if file_path.is_file():
             super().put_file(
-                file_path,
-                PurePosixPath(destination, file_path.name)
+                local_path=file_path,
+                destination=PurePosixPath(destination, file_path.name)
             )
         elif file_path.is_dir():
-            posix_parent = PurePosixPath(file_path).name
             tree = os.walk(file_path)
             for root, dirs, filenames in tree:
                 root_path = Path(root)
-                target = PurePosixPath(destination, root_path.name)
+                target = PurePosixPath(destination, root_path)
                 print(UPLOADING_DIRECTORY_MSG.format(dir_name=root))
                 self._storage.mkdir(target)
                 if not filenames:
@@ -90,8 +87,8 @@ class YaDiskWrapper(BaseWrapper):
                 for filename in filenames:
                     current_ul_path = Path(root, filename)
                     super().put_file(
-                        current_ul_path,
-                        PurePosixPath(str(target), filename)
+                        local_path=current_ul_path,
+                        destination=PurePosixPath(str(target), filename)
                     )
         else:
             raise FileNotFoundError(
