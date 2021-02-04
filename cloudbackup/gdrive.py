@@ -1,10 +1,9 @@
-from collections import namedtuple
 import json
+import requests
 import os
 import mimetypes
-import requests
-from requests import Response
 
+from collections import namedtuple
 from ._authenticator import Authenticator
 from .file_objects import GDriveFile
 from .exceptions import ApiResponseException
@@ -22,6 +21,15 @@ class GDrive:
     """
 
     def __init__(self):
+        self._errors = {
+            GDRIVE_TOO_MANY_REQUESTS,
+            GDRIVE_BAD_REQUEST,
+            GDRIVE_FILE_NOT_FOUND,
+            GDRIVE_LIMIT_EXCEEDED,
+            GDRIVE_BACKEND_ERROR,
+            GDRIVE_INVALID_CREDENTIALS
+        }
+
         self._auth_headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {Authenticator().get_gdrive_token()}"
@@ -45,7 +53,9 @@ class GDrive:
             f"https://www.googleapis.com/drive/v3/files/{file_id}",
             params=file_data, headers=self._auth_headers
         )
-        GDrive._check_status(r)
+        if r.status_code in self._errors:
+            raise ApiResponseException(
+                r.status_code, r.json()["error"]["message"])
         return r.content
 
     def lsdir(
@@ -108,7 +118,9 @@ class GDrive:
             params=flags,
             headers=self._auth_headers
         )
-        GDrive._check_status(r)
+        if r.status_code in self._errors:
+            raise ApiResponseException(
+                r.status_code, r.json()["error"]["message"])
         Page = namedtuple("Page", ["files", "next_page_token"])
         r = r.json()
         if "nextPageToken" in r:
@@ -146,7 +158,9 @@ class GDrive:
             headers=self._auth_headers,
             data=json.dumps(metadata)
         )
-        GDrive._check_status(r)
+        if r.status_code in self._errors:
+            raise ApiResponseException(
+                r.status_code, r.json()["error"]["message"])
         return r.json()["id"]
 
     def remove(self, file_id, permanently=False) -> None:
@@ -172,7 +186,9 @@ class GDrive:
                 f"https://www.googleapis.com/drive/v2/files/{file_id}/trash",
                 headers=self._auth_headers
             )
-        GDrive._check_status(r)
+        if r.status_code in self._errors:
+            raise ApiResponseException(
+                r.status_code, r.json()["error"]["message"])
 
     def get_upload_link(self, file_path, parent_id="root") -> str:
         """
@@ -203,7 +219,9 @@ class GDrive:
             headers=headers,
             data=metadata
         )
-        GDrive._check_status(r)
+        if r.status_code in self._errors:
+            raise ApiResponseException(
+                r.status_code, r.json()["error"]["message"])
         return r.headers["location"]
 
     def upload_file(self, upload_link, file_data) -> None:
@@ -223,37 +241,25 @@ class GDrive:
             data=file_data,
             headers=self._auth_headers
         )
-        GDrive._check_status(r)
+        if r.status_code in self._errors:
+            raise ApiResponseException(
+                r.status_code, r.json()["error"]["message"])
 
     def get_file(self, file_id) -> GDriveFile:
+        """
+        Get file or directory meta-information by file_id.
+
+        Args:
+            file_id: id of directory or file to get meta-information about
+
+        Raises:
+            ApiResponseException: an error occurred accessing API.
+        """
         r = requests.get(
             f"https://www.googleapis.com/drive/v3/files/{file_id}",
             headers=self._auth_headers
         )
-        GDrive._check_status(r)
-        return GDriveFile(r.json())
-
-    @staticmethod
-    def _check_status(api_response: Response) -> None:
-        """
-        This method used for checking the response status code
-        after every API query.
-
-        Params:
-            api_response: response object from `requests` library.
-
-        Raises:
-            ApiResponseException: If API response has unsuccessful status code.
-        """
-        if api_response.status_code in {
-            GDRIVE_TOO_MANY_REQUESTS,
-            GDRIVE_BAD_REQUEST,
-            GDRIVE_FILE_NOT_FOUND,
-            GDRIVE_LIMIT_EXCEEDED,
-            GDRIVE_BACKEND_ERROR,
-            GDRIVE_INVALID_CREDENTIALS
-        }:
+        if r.status_code in self._errors:
             raise ApiResponseException(
-                api_response.status_code,
-                api_response.json()["error"]["message"]
-            )
+                r.status_code, r.json()["error"]["message"])
+        return GDriveFile(r.json())

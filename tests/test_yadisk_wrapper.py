@@ -9,7 +9,7 @@ from cloudbackup.yadisk import YaDisk
 @pytest.fixture()
 def wrapper():
     with patch("test_yadisk_wrapper.YaDisk"):
-        yield YaDiskWrapper(YaDisk())
+        yield YaDiskWrapper()
 
 
 def test_upload_dir(tmpdir, wrapper):
@@ -21,6 +21,4 @@ def test_upload_dir(tmpdir, wrapper):
     inner_file = test_dir.join("inner_file.txt")
     inner_file.write(b"hello from inner file")
 
-
-
-    wrapper.upload(test_dir)
+    wrapper.upload(test_dir, "/")
