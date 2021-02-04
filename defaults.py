@@ -30,8 +30,7 @@ G_SUITE_FILES_TYPE = "application/vnd.google-apps"
 CONFIRM_CHOICE_STRING = "([y]/n) "
 ABORTED_MSG = "Aborted"
 OW_ACCESS_DENIED_MSG = "No access was granted to overwrite"
-RM_ACCESS_DENIED_MSG = "No access was granted to remove"
-
+RM_ACCESS_DENIED_MSG = "No access was granted to delete"
 
 UPLOAD_COMPLETED_MSG = "Upload completed."
 DOWNLOAD_COMPLETED_MSG = "Download completed."
@@ -63,10 +62,12 @@ MOVE_DIR_TO_TRASH_CONFIRMATION_MSG = ("Are you sure you want to"
                                       " to the trash? " +
                                       CONFIRM_CHOICE_STRING)
 DELETE_DIR_CONFIRMATION_MSG = ("Are you sure you want to"
-                               " delete [D]: `{dir_name}`? " +
+                               " permanently delete [D]: "
+                               "`{dir_name}`? " +
                                CONFIRM_CHOICE_STRING)
 DELETE_FILE_CONFIRMATION_MSG = ("Are you sure you want to"
-                                " delete [F]: `{file_name}`? " +
+                                " permanently delete [F]: "
+                                "`{file_name}`? " +
                                 CONFIRM_CHOICE_STRING)
 
 LIST_NEXT_PAGE_MSG = "List next page? " + CONFIRM_CHOICE_STRING
