@@ -7,7 +7,6 @@ from collections import namedtuple
 from cloudbackup._authenticator import Authenticator
 from cloudbackup.exceptions import (
     ApiResponseException,
-    IncorrectPathException,
     FileIsNotDownloadableException
 )
 from cloudbackup.file_objects import YaDiskFile
@@ -54,7 +53,6 @@ class YaDisk:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        YaDisk._check_path(path)
         keys = {
             "path": path,
             "sort": sort,
@@ -92,7 +90,6 @@ class YaDisk:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        YaDisk._check_path(path)
         keys = {
             "path": path,
             "fields": "name, type, path"
@@ -154,7 +151,6 @@ class YaDisk:
         Raises:
              ApiResponseException: an error occurred accessing API
         """
-        YaDisk._check_path(path)
         request_for_link = requests.get(
             "https://cloud-api.yandex.net/v1/disk/resources/download",
             headers=self._auth_headers,
@@ -211,7 +207,6 @@ class YaDisk:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        YaDisk._check_path(destination)
         metadata = {
             "name": os.path.basename(file_path),
             "mime_type": mimetypes.guess_type(file_path)[0],
@@ -260,7 +255,6 @@ class YaDisk:
         Raises:
             ApiResponseException: an error occurred accessing API.
         """
-        YaDisk._check_path(destination)
         path = {"path": destination}
         r = requests.put(
             "https://cloud-api.yandex.net/v1/disk/resources",
@@ -288,7 +282,6 @@ class YaDisk:
             IncorrectPathException: if path has prohibited chars.
         """
 
-        YaDisk._check_path(path)
         flags = {
             "path": path,
             "permanently": permanently,
@@ -304,17 +297,3 @@ class YaDisk:
                 r.status_code,
                 r.json()["description"]
             )
-
-    @staticmethod
-    def _check_path(path) -> None:
-        """
-        Check if path contains prohibited chars.
-
-        Params:
-            path: path to a file on YaDisk storage.
-
-        Raises:
-            IncorrectPathException: if path has prohibited chars.
-        """
-        if not path.startswith("disk:/") and ":" in path:
-            raise IncorrectPathException(path)

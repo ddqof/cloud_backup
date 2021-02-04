@@ -9,17 +9,6 @@ class ApiResponseException(Exception):
         self.status_code = status_code
 
 
-class IncorrectPathException(Exception):
-    """
-    Raises when destination path contains ':' symbol that
-    YandexDisk API cannot handle
-    """
-
-    def __init__(self, path):
-        self.message = f"Path: {path} must not include any `:` characters."
-        super().__init__(self.message)
-
-
 class FileIsNotDownloadableException(Exception):
 
     def __init__(self, file):
