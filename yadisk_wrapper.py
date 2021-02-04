@@ -2,7 +2,7 @@ import errno
 import os
 
 from _base_wrapper import BaseWrapper
-from pathlib import PurePath, Path, PureWindowsPath, PurePosixPath
+from pathlib import PurePath, Path, PurePosixPath
 from cloudbackup.yadisk import YaDisk
 from defaults import (
     YADISK_SORT_KEYS,
@@ -44,9 +44,11 @@ class YaDiskWrapper(BaseWrapper):
             for file in all_files:
                 print(file)
         else:
-            page = self._storage.lsdir(path,
-                                       offset=offset,
-                                       sort=YADISK_SORT_KEYS[order_key])
+            page = self._storage.lsdir(
+                path,
+                offset=offset,
+                sort=YADISK_SORT_KEYS[order_key]
+            )
             while True:
                 for file in page.files:
                     print(file)
@@ -82,8 +84,6 @@ class YaDiskWrapper(BaseWrapper):
                 target = PurePosixPath(destination, root_path)
                 print(UPLOADING_DIRECTORY_MSG.format(dir_name=root))
                 self._storage.mkdir(target)
-                if not filenames:
-                    continue
                 for filename in filenames:
                     current_ul_path = Path(root, filename)
                     super().put_file(
@@ -92,15 +92,12 @@ class YaDiskWrapper(BaseWrapper):
                     )
         else:
             raise FileNotFoundError(
-                errno.ENOENT,
-                os.strerror(errno.ENOENT),
-                file_path)
+                errno.ENOENT, os.strerror(errno.ENOENT), file_path)
 
     def download(self, file, local_destination=None, ov=False) -> None:
         """
         Download file on remote to local_destination.
         """
-
         p = PurePath(file.id)
         if local_destination is None:
             dl_path = PurePath(p.name)
@@ -119,11 +116,7 @@ class YaDiskWrapper(BaseWrapper):
                 download_msg = super().get_ow_msg(dl_path)
             else:
                 raise FileExistsError(
-                    errno.EEXIST,
-                    os.strerror(errno.EEXIST),
-                    dl_path
-                )
-        else:
-            print(download_msg)
-            download_link = self._storage.get_download_link(file.id)
-            dl_path.write_bytes(self._storage.download(download_link))
+                    errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
+        print(download_msg)
+        download_link = self._storage.get_download_link(file.id)
+        dl_path.write_bytes(self._storage.download(download_link))

@@ -81,7 +81,7 @@ OVERWRITE_DIR_REQUEST_MSG = ("Are you sure you want to"
 OVERWRITING_DIRECTORY_MSG = "Overwriting [D]: `{dir_name}`..."
 OVERWRITING_FILE_MSG = "Overwriting [F]: `{file_name}`..."
 
-MAKING_DIRECTORY_MSG = "Making directory: `{dir_name}`..."
+MAKING_DIRECTORY_MSG = "Downloading [D]: `{dir_name}`..."
 UPLOADING_DIRECTORY_MSG = "Uploading [D]: `{dir_name}`..."
 DOWNLOADING_FILE_MSG = "Downloading [F]: `{file_name}`..."
 UPLOADING_FILE_MSG = "Uploading [F]: `{file_name}`..."

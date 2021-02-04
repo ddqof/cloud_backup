@@ -29,12 +29,12 @@ class BaseWrapper(ABC):
     @staticmethod
     def get_ow_msg(path) -> str:
         if os.path.isfile(path):
-            overwrite_confirm = OVERWRITE_FILE_REQUEST_MSG.format(file_name=path)
+            ov_confirm = OVERWRITE_FILE_REQUEST_MSG.format(file_name=path)
             exit_msg = OVERWRITING_FILE_MSG.format(file_name=path)
         else:
-            overwrite_confirm = OVERWRITE_DIR_REQUEST_MSG.format(dir_name=path)
+            ov_confirm = OVERWRITE_DIR_REQUEST_MSG.format(dir_name=path)
             exit_msg = OVERWRITING_DIRECTORY_MSG.format(dir_name=path)
-        user_confirm = input(overwrite_confirm)
+        user_confirm = input(ov_confirm)
         if user_confirm in {"y", "yes", ""}:
             return exit_msg
         else:
@@ -98,4 +98,3 @@ class BaseWrapper(ABC):
     @abstractmethod
     def upload(self, file_id, destination):
         ...
-

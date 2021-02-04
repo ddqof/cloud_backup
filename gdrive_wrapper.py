@@ -57,15 +57,16 @@ class GDriveWrapper(BaseWrapper):
             else:
                 break
 
-    def download(self, file, local_destination=None, ov=False) -> None:
+    @staticmethod
+    def _get_dl_path_and_msg(file, local_destination, ov) -> (Path, str):
         """
-        Download file or directory by id of GDrive file.
+        Returns download message for CLI interface according to
+         name of remote file, local_destination and overwrite access.
         """
         if local_destination is None:
-            dl_path = file.name
+            dl_path = Path(file.name)
         else:
-            dl_path = PurePath(local_destination, file.name)
-        dl_path = Path(dl_path).resolve()
+            dl_path = Path(local_destination, file.name)
         if file.type == "file":
             dl_msg = DOWNLOADING_FILE_MSG.format(file_name=dl_path)
         elif file.type == "dir":
@@ -77,56 +78,62 @@ class GDriveWrapper(BaseWrapper):
                 dl_msg = super().get_ow_msg(dl_path)
             else:
                 raise FileExistsError(
-                    errno.EEXIST,
-                    os.strerror(errno.EEXIST),
-                    dl_path
-                )
-        else:
-            print(dl_msg)
-            if file.type == "file":
-                file_bytes = self._storage.download(file.id)
-                dl_path.write_bytes(file_bytes)
-            elif file.type == "dir":
-                if dl_path.exists():
-                    shutil.rmtree(dl_path)
-                os.mkdir(dl_path)
-                next_page_token = None
-                while True:
-                    page = self._storage.lsdir(file.id,
-                                               owners=['me'],
-                                               page_token=next_page_token,
-                                               page_size=1000)
-                    for file in page.files:
-                        self.download(file,
-                                      local_destination=dl_path,
-                                      ov=ov)
-                    next_page_token = page.next_page_token
-                    if next_page_token is None:
-                        break
+                    errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
+        return dl_path, dl_msg
 
-    def upload(self, file_path, parents) -> None:
+    def download(self, file, local_destination=None, ov=False) -> None:
+        """
+        Download file or directory by id of GDrive file.
+        """
+        dl_path, dl_msg = GDriveWrapper._get_dl_path_and_msg(
+            file, local_destination, ov
+        )
+        print(dl_msg)
+        if file.type == "file":
+            file_bytes = self._storage.download(file.id)
+            dl_path.write_bytes(file_bytes)
+        elif file.type == "dir":
+            if dl_path.exists():
+                shutil.rmtree(dl_path)
+            os.mkdir(dl_path)
+            next_page_token = None
+            while True:
+                page = self._storage.lsdir(
+                    file.id,
+                    owners=['me'],
+                    page_token=next_page_token,
+                    page_size=1000
+                )
+                for file in page.files:
+                    self.download(file,  local_destination=dl_path, ov=ov)
+                next_page_token = page.next_page_token
+                if next_page_token is None:
+                    break
+
+    def upload(self, filename, parents) -> None:
         """
         Upload file or directory by path.
         """
-        p = Path(file_path).resolve()
-        if p.is_file():
-            super().put_file(p, parents)
-        elif p.is_dir():
+        file_path = Path(filename)
+        if not file_path.name:
+            file_path = file_path.resolve()
+        if file_path.is_file():
+            super().put_file(local_path=file_path, destination=parents)
+        elif file_path.is_dir():
             parents = {}
-            tree = os.walk(p)
+            tree = os.walk(file_path)
             for root, dirs, filenames in tree:
-                root_path = Path(root)
+                root_path = PurePath(root)
                 parent_id = parents[root_path.parent] if parents else None
                 print(UPLOADING_DIRECTORY_MSG.format(dir_name=root))
-                folder_id = self._storage.mkdir(root_path.name,
-                                                parent_id=parent_id)
+                folder_id = self._storage.mkdir(
+                    root_path.name,
+                    parent_id=parent_id
+                )
                 for file in filenames:
                     ul_path = PurePath(root, file)
-                    super().put_file(ul_path, folder_id)
-                parents[root] = folder_id
+                    super().put_file(local_path=ul_path, destination=folder_id)
+                parents[root_path] = folder_id
         else:
             raise FileNotFoundError(
-                errno.ENOENT,
-                os.strerror(errno.ENOENT),
-                file_path
-            )
+                errno.ENOENT, os.strerror(errno.ENOENT), filename)
