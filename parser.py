@@ -51,7 +51,6 @@ def parse_args():
         parents=[remote_file_parser])
     dl_parser.add_argument(
         "destination",
-        nargs="?",
         help="Pass directory where you want to save downloaded file."
              " If not specified download to present working directory.")
     dl_parser.add_argument(
