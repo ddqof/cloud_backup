@@ -40,7 +40,7 @@ class GDriveWrapper(BaseWrapper):
                 order_by=GDRIVE_SORT_KEYS[order_key],
                 page_token=page_token)
             for file in page.files:
-                print(file)
+                print(file.str_value())
             if page.next_page_token is not None:
                 page_token = page.next_page_token
                 if file_id is None:
@@ -62,7 +62,7 @@ class GDriveWrapper(BaseWrapper):
             dl_path = Path(file.name)
         else:
             dl_path = Path(local_destination, file.name)
-        print(GdriveDLMessage(dl_path, file.type, ov))
+        print(GdriveDLMessage(dl_path, file.type, ov).str_value())
         if file.type == "file":
             file_bytes = self._storage.download(file.id)
             dl_path.write_bytes(file_bytes)
@@ -99,13 +99,15 @@ class GDriveWrapper(BaseWrapper):
             for root, dirs, filenames in tree:
                 root_path = PurePath(root)
                 parent_id = parents[root_path.parent] if parents else None
-                print(ULMessage(root))
+                print(ULMessage(root).str_value())
                 folder_id = self._storage.mkdir(
                     root_path.name,
                     parent_id=parent_id
                 )
                 for file in filenames:
-                    super().put_file(local_path=Path(root, file), destination=folder_id)
+                    super().put_file(
+                        local_path=Path(root, file), destination=folder_id
+                    )
                 parents[root_path] = folder_id
         else:
             raise FileNotFoundError(

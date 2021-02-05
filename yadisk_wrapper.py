@@ -40,7 +40,7 @@ class YaDiskWrapper(BaseWrapper):
                 else:
                     break
             for file in all_files:
-                print(file)
+                print(file.str_value())
         else:
             page = self._storage.lsdir(
                 path,
@@ -49,7 +49,7 @@ class YaDiskWrapper(BaseWrapper):
             )
             while True:
                 for file in page.files:
-                    print(file)
+                    print(file.str_value())
                 offset += 20
                 page = self._storage.lsdir(
                     path,
@@ -80,7 +80,7 @@ class YaDiskWrapper(BaseWrapper):
             for root, dirs, filenames in tree:
                 root_path = Path(root)
                 target = PurePosixPath(destination, root_path)
-                print(ULMessage(root))
+                print(ULMessage(root).str_value())
                 self._storage.mkdir(target)
                 for filename in filenames:
                     super().put_file(
@@ -103,6 +103,6 @@ class YaDiskWrapper(BaseWrapper):
         if file.type == "dir":
             dl_path = dl_path.with_suffix(".zip")
         dl_path = Path(dl_path)
-        print(YadiskDLMessage(dl_path, file.type, file.id, ov))
+        print(YadiskDLMessage(dl_path, file.type, file.id, ov).str_value())
         download_link = self._storage.get_download_link(file.id)
         dl_path.write_bytes(self._storage.download(download_link))

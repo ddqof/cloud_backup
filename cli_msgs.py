@@ -3,16 +3,16 @@ import os
 from pathlib import Path
 
 from defaults import (
-    OVERWRITING_FILE_MSG,
-    OVERWRITE_FILE_REQUEST_MSG,
-    OVERWRITE_DIR_REQUEST_MSG,
-    OVERWRITING_DIRECTORY_MSG,
+    OVERWRITE_REQUEST_MSG,
+    OVERWRITING_MSG,
     OW_ACCESS_DENIED_MSG,
-    SKIP_G_SUITE_FILE_MSG,
-    MAKING_DIRECTORY_MSG,
-    DOWNLOADING_FILE_MSG,
-    UPLOADING_DIRECTORY_MSG,
-    DOWNLOADING_DIR_AS_ZIP_MSG
+    SKIPPING_MSG,
+    DOWNLOADING_MSG,
+    UPLOADING_MSG,
+    DOWNLOADING_AS_ZIP_MSG,
+    SUCCESSFUL_DELETE_MSG,
+    SUCCESSFUL_TRASH_MSG,
+    DELETE_CONFIRMATION_MSG
 )
 
 
@@ -21,16 +21,12 @@ class OVMessage:
     def __init__(self, path: Path):
         self._path = path
 
-    def __str__(self):
-        if self._path.is_file():
-            ov_confirm = OVERWRITE_FILE_REQUEST_MSG.format(self._path)
-            exit_msg = OVERWRITING_FILE_MSG.format(self._path)
-        else:
-            ov_confirm = OVERWRITE_DIR_REQUEST_MSG.format(self._path)
-            exit_msg = OVERWRITING_DIRECTORY_MSG.format(self._path)
-        user_confirm = input(ov_confirm)
+    def str_value(self):
+        user_confirm = input(
+            OVERWRITE_REQUEST_MSG.format(f"{self._path}")
+        )
         if user_confirm in {"y", "yes", ""}:
-            return exit_msg
+            return OVERWRITING_MSG.format(f"{self._path}")
         else:
             raise PermissionError(OW_ACCESS_DENIED_MSG)
 
@@ -48,20 +44,18 @@ class GdriveDLMessage(DLMessage):
     def __init__(self, path: Path, file_type: str, ov: bool):
         super().__init__(path, file_type, ov)
 
-    def __str__(self):
-        if self._file_type == "file":
-            msg = DOWNLOADING_FILE_MSG.format(self._path)
-        elif self._file_type == "dir":
-            msg = MAKING_DIRECTORY_MSG.format(self._path)
+    def str_value(self):
+        if self._file_type == "g.suite":
+            msg = SKIPPING_MSG
         else:
-            msg = SKIP_G_SUITE_FILE_MSG.format(self._path)
+            msg = DOWNLOADING_MSG
         if self._path.exists():
             if self._ov:
-                msg = str(OVMessage(self._path))
+                msg = OVMessage(self._path).str_value()
             else:
                 raise FileExistsError(
-                    errno.EEXIST, os.strerror(errno.EEXIST), self._path)
-        return msg
+                    errno.EEXIST, os.strerror(errno.EEXIST), str(self._path))
+        return msg.format(self._path)
 
 
 class YadiskDLMessage(DLMessage):
@@ -70,26 +64,49 @@ class YadiskDLMessage(DLMessage):
         super().__init__(path, file_type, ov)
         self._file_id = file_id
 
-    def __str__(self):
+    def str_value(self):
         if self._file_type == "dir":
-            msg = DOWNLOADING_DIR_AS_ZIP_MSG.format(
+            msg = DOWNLOADING_AS_ZIP_MSG.format(
                 self._file_id, self._path
             )
         else:
-            msg = DOWNLOADING_FILE_MSG.format(self._path)
+            msg = DOWNLOADING_MSG.format(self._path)
         if self._path.exists():
             if self._ov:
-                msg = OVMessage(self._path)
+                msg = OVMessage(self._path).str_value()
             else:
                 raise FileExistsError(
-                    errno.EEXIST, os.strerror(errno.EEXIST), self._path)
+                    errno.EEXIST, os.strerror(errno.EEXIST), str(self._path))
         return msg
 
 
 class ULMessage:
 
-    def __init__(self, path):
+    def __init__(self, path: Path):
         self._path = path
 
-    def __str__(self):
-        return UPLOADING_DIRECTORY_MSG.format(self._path)
+    def str_value(self):
+        return UPLOADING_MSG.format(self._path)
+
+
+class DeleteConfirm:
+
+    def __init__(self, file_name: str):
+        self._file_name = file_name
+
+    def str_value(self):
+        return DELETE_CONFIRMATION_MSG.format(self._file_name)
+
+
+class DeleteMessage:
+
+    def __init__(self, file_name: str, permanently: bool):
+        self._file_name = file_name
+        self._permanently = permanently
+
+    def str_value(self):
+        if self._permanently:
+            msg = SUCCESSFUL_DELETE_MSG
+        else:
+            msg = SUCCESSFUL_TRASH_MSG
+        return msg.format(self._file_name)

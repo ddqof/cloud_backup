@@ -34,50 +34,31 @@ RM_ACCESS_DENIED_MSG = "No access was granted to delete"
 
 UPLOAD_COMPLETED_MSG = "Upload completed."
 DOWNLOAD_COMPLETED_MSG = "Download completed."
-SUCCESSFUL_DOWNLOAD_FILE_MSG = "Successfully downloaded [F]: `{}`"
-SUCCESSFUL_DOWNLOAD_DIR_MSG = "Successfully downloaded [D]: `{}`"
-SUCCESSFUL_UPLOAD_FILE_MSG = "Successfully uploaded [F]: `{}`"
-SUCCESSFUL_UPLOAD_DIR_MSG = "Successfully uploaded [D]: `{}`"
-SUCCESSFUL_DELETE_FILE_MSG = "Successfully deleted [F]: `{}`"
-SUCCESSFUL_DELETE_DIR_MSG = "Successfully deleted [D]: `{}`"
-SUCCESSFUL_FILE_TRASH_MSG = "Successfully moved [F]: `{}` to the trash"
-SUCCESSFUL_DIR_TRASH_MSG = "Successfully moved [D]: `{}` to the trash"
+SUCCESSFUL_DOWNLOAD_MSG = "Successfully downloaded `{}`"
+SUCCESSFUL_UPLOAD_MSG = "Successfully uploaded `{}`"
+SUCCESSFUL_DELETE_MSG = "Successfully deleted  {}`"
+SUCCESSFUL_TRASH_MSG = "Successfully moved `{}` to the trash"
 
 G_SUITE_FILE = "[S]: `{}` isn't downloadable."
 
-MOVE_FILE_TO_TRASH_CONFIRMATION_MSG = (
-        "Are you sure you want to move [F]: `{file_name}` to the trash? " +
+MOVE_TO_TRASH_CONFIRMATION_MSG = (
+        "Are you sure you want to move `{}` to the trash? " +
         CONFIRM_CHOICE_STRING
 )
-MOVE_DIR_TO_TRASH_CONFIRMATION_MSG = (
-        "Are you sure you want to move [D]: `{}` to the trash? " +
-        CONFIRM_CHOICE_STRING
-)
-DELETE_DIR_CONFIRMATION_MSG = (
-        "Are you sure you want to permanently delete [D]: `{}`? " +
-        CONFIRM_CHOICE_STRING
-)
-DELETE_FILE_CONFIRMATION_MSG = (
-        "Are you sure you want to permanently delete [F]: `{}`? " +
+DELETE_CONFIRMATION_MSG = (
+        "Are you sure you want to permanently delete `{}`? " +
         CONFIRM_CHOICE_STRING
 )
 
 LIST_NEXT_PAGE_MSG = "List next page? " + CONFIRM_CHOICE_STRING
 
-OVERWRITE_FILE_REQUEST_MSG = (
-        "Are you sure you want to overwrite [F]: `{}`? " +
+OVERWRITE_REQUEST_MSG = (
+        "Are you sure you want to overwrite `{}`? " +
         CONFIRM_CHOICE_STRING
 )
-OVERWRITE_DIR_REQUEST_MSG = (
-        "Are you sure you want to overwrite [D]: `{}`? " +
-        CONFIRM_CHOICE_STRING
-)
-OVERWRITING_DIRECTORY_MSG = "Overwriting [D]: `{}`..."
-OVERWRITING_FILE_MSG = "Overwriting [F]: `{}`..."
+OVERWRITING_MSG = "Overwriting: `{}`..."
 
-MAKING_DIRECTORY_MSG = "Downloading [D]: `{}`..."
-UPLOADING_DIRECTORY_MSG = "Uploading [D]: `{}`..."
-DOWNLOADING_FILE_MSG = "Downloading [F]: `{}`..."
-UPLOADING_FILE_MSG = "Uploading [F]: `{}`..."
-DOWNLOADING_DIR_AS_ZIP_MSG = "Downloading [D]: `{}` as `{}`..."
-SKIP_G_SUITE_FILE_MSG = "Skipping [S]: `{}` ..."
+UPLOADING_MSG = "Uploading: `{}`..."
+DOWNLOADING_MSG = "Downloading: `{}`..."
+DOWNLOADING_AS_ZIP_MSG = "Downloading: `{}` as `{}`..."
+SKIPPING_MSG = "Skipping: `{}` ..."

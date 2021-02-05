@@ -1,11 +1,17 @@
 class RemoteFile:
+    """
+    Class represents base file on any remote storage.
+    """
 
     def __init__(self, name, type, id):
         self.name = name
         self.type = type
         self.id = id
 
-    def __str__(self):
+    def str_value(self):
+        """
+        Returns CLI string output for specific file.
+        """
         if self.type == "dir":
             file_type = "D"
         elif self.type == "file":
@@ -13,6 +19,9 @@ class RemoteFile:
         else:
             file_type = "S"
         return f"[{file_type}] {self.name} ({self.id})"
+
+    def __str__(self):
+        return self.str_value()
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__

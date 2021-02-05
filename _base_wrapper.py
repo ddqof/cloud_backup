@@ -1,23 +1,8 @@
-import os
-
 from abc import ABC, abstractmethod
 
+from cli_msgs import ULMessage, DeleteConfirm, DeleteMessage
 from defaults import (
-    OVERWRITING_DIRECTORY_MSG,
-    OVERWRITING_FILE_MSG,
-    OVERWRITE_FILE_REQUEST_MSG,
-    OW_ACCESS_DENIED_MSG,
     RM_ACCESS_DENIED_MSG,
-    UPLOADING_FILE_MSG,
-    DELETE_DIR_CONFIRMATION_MSG,
-    SUCCESSFUL_DELETE_FILE_MSG,
-    MOVE_FILE_TO_TRASH_CONFIRMATION_MSG,
-    SUCCESSFUL_FILE_TRASH_MSG,
-    DELETE_FILE_CONFIRMATION_MSG,
-    SUCCESSFUL_DELETE_DIR_MSG,
-    MOVE_DIR_TO_TRASH_CONFIRMATION_MSG,
-    SUCCESSFUL_DIR_TRASH_MSG,
-    OVERWRITE_DIR_REQUEST_MSG,
 )
 
 
@@ -31,7 +16,7 @@ class BaseWrapper(ABC):
         Get upload link and then upload file raw binary data using this link.
         """
         link = self._storage.get_upload_link(local_path, destination)
-        print(UPLOADING_FILE_MSG.format(file_name=local_path))
+        print(ULMessage(local_path).str_value())
         with open(local_path, "rb") as f:
             file_data = f.read()
         self._storage.upload_file(link, file_data)
@@ -41,36 +26,17 @@ class BaseWrapper(ABC):
         Remove file or directory on GoogleDrive or YandexDisk storage.
         """
         file = self._storage.get_file(file_id)
-        if permanently:
-            if file.type == "dir":
-                delete_confirm = DELETE_DIR_CONFIRMATION_MSG.format(
-                    dir_name=file.name)
-                exit_msg = SUCCESSFUL_DELETE_DIR_MSG.format(
-                    dir_name=file.name)
-            else:
-                delete_confirm = DELETE_FILE_CONFIRMATION_MSG.format(
-                    file_name=file.name)
-                exit_msg = SUCCESSFUL_DELETE_FILE_MSG.format(
-                    file_name=file.name)
-        else:
-            if file.type == "dir":
-                delete_confirm = MOVE_DIR_TO_TRASH_CONFIRMATION_MSG.format(
-                    dir_name=file.name)
-                exit_msg = SUCCESSFUL_DIR_TRASH_MSG.format(
-                    dir_name=file.name)
-            else:
-                delete_confirm = MOVE_FILE_TO_TRASH_CONFIRMATION_MSG.format(
-                    file_name=file.name)
-                exit_msg = SUCCESSFUL_FILE_TRASH_MSG.format(
-                    file_name=file.name)
-        user_confirm = input(delete_confirm)
+        user_confirm = input(DeleteConfirm(file.name).str_value())
         if user_confirm in {"y", "yes", ""}:
             self._storage.remove(file_id, permanently=permanently)
-            print(exit_msg)
+            print(DeleteMessage(file.name, permanently).str_value())
         else:
             raise PermissionError(RM_ACCESS_DENIED_MSG)
 
     def get_file(self, file_id):
+        """
+        Gets file meta-information by file_id.
+        """
         return self._storage.get_file(file_id)
 
     @abstractmethod
