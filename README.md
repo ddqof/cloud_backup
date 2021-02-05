@@ -12,7 +12,7 @@ See `requirements.txt`
 
 ## Examples of usage
 
-### Listing
+### List
 
 Directories marked as `[D]`, files marked as `[F]`, G.Suite files marked as 
 `[S]` in CLI output.
@@ -48,7 +48,7 @@ Directories marked as `[D]`, files marked as `[F]`, G.Suite files marked as
  `/` directory.
  
  
-### Downloading
+### Download
 
 #### GDrive
 
