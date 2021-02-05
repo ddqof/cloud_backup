@@ -7,7 +7,6 @@ from urllib.parse import urlencode
 import responses
 from cloudbackup.exceptions import (
     ApiResponseException,
-    IncorrectPathException,
     FileIsNotDownloadableException
 )
 from cloudbackup.yadisk import YaDisk
@@ -405,25 +404,3 @@ def test_make_existing_dir(yadisk):
     assert str(api_exc.value) == ("Specified path \"/existing_dir\""
                                   " points to existent directory.")
     assert api_exc.value.status_code == 409
-
-
-@responses.activate
-def test_mkdir_with_incorrect_path(yadisk):
-    path = "/tests:what"
-    url_keys = {"path": path}
-    responses.add(
-        responses.PUT,
-        url=f"https://cloud-api.yandex.net/v1/disk/resources?"
-            f"{urlencode(url_keys)}",
-        json={
-            "message": "Указанный формат ресурса Диска \"what\""
-                       " не корректен. Должен начинаться с /.",
-            "description": "Specified path \"what\" has incorrect format",
-            "error": "DiskPathFormatError"
-        },
-        status=400
-    )
-    with pytest.raises(IncorrectPathException) as api_exc:
-        yadisk.mkdir(path)
-    assert str(api_exc.value) == (f"Path: {path} must not include"
-                                  f" any `:` characters.")

@@ -79,21 +79,6 @@ def test_remove_permanently(gdrive):
 
 
 @responses.activate
-def test_empty_trash(gdrive):
-    #  status code 204, empty text
-    responses.add(
-        method="DELETE",
-        url="https://www.googleapis.com/drive/v3/files/trash",
-        content_type="application/json",
-        status=204,
-    )
-    gdrive._empty_trash()
-    assert len(responses.calls) == 1
-    check_auth_headers(responses.calls[0].request.headers)
-    assert responses.calls[0].response.status_code == 204
-
-
-@responses.activate
 def test_non_dir_id_in_lsdir_query(gdrive):
     url_params = {
         "orderBy": "modifiedTime",
