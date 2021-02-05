@@ -91,7 +91,7 @@ class Authenticator:
                     exchange_keys)
                 token_data["access_token"] = api_token_response["access_token"]
                 expire_seconds = datetime.timedelta(
-                    0,  api_token_response["expires_in"] - INACCURACY_SECONDS)
+                    0, api_token_response["expires_in"] - INACCURACY_SECONDS)
                 token_data["expire_time"] = (
                         datetime.datetime.now() + expire_seconds)
                 with open(token_file_path, "wb") as token_file:

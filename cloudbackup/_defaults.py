@@ -1,48 +1,48 @@
-import os
+from pathlib import Path, PurePath
 
-DEFAULT_GOOGLE_TOKEN_PATH = os.path.join(
-    os.path.dirname(__file__),
+DEFAULT_GOOGLE_TOKEN_PATH = Path(
+    PurePath(__file__).parent,
     "service",
     "google",
     "token.pickle"
 )
-TEST_GOOGLE_TOKEN_PATH = os.path.join(
-    os.path.dirname(__file__),
+TEST_GOOGLE_TOKEN_PATH = Path(
+    PurePath(__file__).parent,
     "service",
     "google",
     "test_token.pickle"
 )
-GOOGLE_CREDENTIALS_PATH = os.path.join(
-    os.path.dirname(__file__),
+GOOGLE_CREDENTIALS_PATH = Path(
+    PurePath(__file__).parent,
     "service",
     "google",
     "credentials.json"
 )
-YANDEX_CREDENTIALS_PATH = os.path.join(
-    os.path.dirname(__file__),
+YANDEX_CREDENTIALS_PATH = Path(
+    PurePath(__file__).parent,
     "service",
     "yandex",
     "credentials.json"
 )
-DEFAULT_YANDEX_TOKEN_PATH = os.path.join(
-    os.path.dirname(__file__),
+DEFAULT_YANDEX_TOKEN_PATH = Path(
+    PurePath(__file__).parent,
     "service",
     "yandex",
     "token.pickle"
 )
-TEST_YANDEX_TOKEN_PATH = os.path.join(
-    os.path.dirname(__file__),
+TEST_YANDEX_TOKEN_PATH = Path(
+    PurePath(__file__).parent,
     "service",
     "yandex",
     "test_token.pickle"
 )
-SUCCESS_MESSAGE_PATH = os.path.join(
-    os.path.dirname(__file__),
+SUCCESS_MESSAGE_PATH = Path(
+    PurePath(__file__).parent,
     "service",
     "success_message.html"
 )
-FAILURE_MESSAGE_PATH = os.path.join(
-    os.path.dirname(__file__),
+FAILURE_MESSAGE_PATH = Path(
+    PurePath(__file__).parent,
     "service",
     "failure_message.html"
 )

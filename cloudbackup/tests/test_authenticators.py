@@ -1,21 +1,23 @@
 import datetime
 import pytest
-import os
 import pickle
 from callee import Contains
 from cloudbackup._defaults import (TEST_GOOGLE_TOKEN_PATH,
                                    TEST_YANDEX_TOKEN_PATH)
 from cloudbackup._authenticator import Authenticator
+from pathlib import Path
 from unittest.mock import Mock
 
 
 @pytest.fixture()
 def auth():
     yield Authenticator()
-    if os.path.exists(TEST_GOOGLE_TOKEN_PATH):
-        os.remove(TEST_GOOGLE_TOKEN_PATH)
-    if os.path.exists(TEST_YANDEX_TOKEN_PATH):
-        os.remove(TEST_YANDEX_TOKEN_PATH)
+    g_token_path = Path(TEST_GOOGLE_TOKEN_PATH)
+    y_token_path = Path(TEST_YANDEX_TOKEN_PATH)
+    if g_token_path.exists():
+        g_token_path.unlink()
+    if y_token_path.exists():
+        y_token_path.unlink()
 
 
 def test_get_gdrive_token_first_time(auth):
@@ -26,15 +28,15 @@ def test_get_gdrive_token_first_time(auth):
     auth._client_socket = Mock()
     code = "4/0AY0e-g5asIaMQ1-_XXXXXNcKAel35qh2AjkGGBgAz9_zPXiyzHdw_XXXX"
     auth._handle_user_prompt = Mock(return_value=code)
-    #  tests data from oauth2 docs
     token_data = {
         "access_token": "very_secret_access_token",
         "refresh_token": "some_refresh_token",
         "expires_in": 3920,
     }
     auth._get_gdrive_tokens_from_api = Mock(return_value=token_data)
-    if os.path.exists(TEST_GOOGLE_TOKEN_PATH):
-        os.remove(TEST_GOOGLE_TOKEN_PATH)
+    g_token_path = Path(TEST_GOOGLE_TOKEN_PATH)
+    if g_token_path.exists():
+        g_token_path.unlink()
     access_token = auth.get_gdrive_token(TEST_GOOGLE_TOKEN_PATH)
     keys = [
         "client_id",
@@ -123,9 +125,9 @@ def test_get_yadisk_token_first_time(auth):
         "expires_in": 31466940,
     }
     auth._get_yadisk_tokens_from_api = Mock(return_value=token_data)
-    if os.path.exists(TEST_YANDEX_TOKEN_PATH):
-        os.remove(TEST_YANDEX_TOKEN_PATH)
-    #  tests data from oauth2 docs
+    y_token_path = Path(TEST_YANDEX_TOKEN_PATH)
+    if y_token_path.exists():
+        y_token_path.unlink()
     access_token = auth.get_yadisk_token(TEST_YANDEX_TOKEN_PATH)
     keys = [
         "client_id",
