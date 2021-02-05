@@ -52,6 +52,10 @@ Directories marked as `[D]`, files marked as `[F]`, G.Suite files marked as
 
 #### GDrive
 
+Note that G.Suite `[S]` files are not downloadable and you will see only
+`Skiping: file_name ...` when you will try to download this G.Suite file 
+called `file_name`.
+
 * `./main.py gdrive dl 1n7bDl79J3xf3E2JEENtYqb7nvSdkFof4l .` to download file
  that has id `1n7bDl79J3xf3E2JEENtYqb7nvSdkFof4` in current working directory
 
