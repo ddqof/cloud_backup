@@ -26,20 +26,6 @@ class BaseWrapper(ABC):
     def __init__(self, storage):
         self._storage = storage
 
-    @staticmethod
-    def get_ow_msg(path) -> str:
-        if os.path.isfile(path):
-            ov_confirm = OVERWRITE_FILE_REQUEST_MSG.format(file_name=path)
-            exit_msg = OVERWRITING_FILE_MSG.format(file_name=path)
-        else:
-            ov_confirm = OVERWRITE_DIR_REQUEST_MSG.format(dir_name=path)
-            exit_msg = OVERWRITING_DIRECTORY_MSG.format(dir_name=path)
-        user_confirm = input(ov_confirm)
-        if user_confirm in {"y", "yes", ""}:
-            return exit_msg
-        else:
-            raise PermissionError(OW_ACCESS_DENIED_MSG)
-
     def put_file(self, local_path, destination):
         """
         Get upload link and then upload file raw binary data using this link.

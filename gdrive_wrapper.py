@@ -9,12 +9,9 @@ from defaults import (
     GDRIVE_SORT_KEYS,
     ABORTED_MSG,
     LIST_NEXT_PAGE_MSG,
-    MAKING_DIRECTORY_MSG,
-    DOWNLOADING_FILE_MSG,
-    UPLOADING_DIRECTORY_MSG,
-    SKIP_G_SUITE_FILE_MSG,
 )
 from cloudbackup.gdrive import GDrive
+from cli_msgs import GdriveDLMessage, ULMessage
 
 
 class GDriveWrapper(BaseWrapper):
@@ -57,38 +54,15 @@ class GDriveWrapper(BaseWrapper):
             else:
                 break
 
-    @staticmethod
-    def _get_dl_path_and_msg(file, local_destination, ov) -> (Path, str):
+    def download(self, file, local_destination=None, ov=False) -> None:
         """
-        Returns download message for CLI interface according to
-         name of remote file, local_destination and overwrite access.
+        Download file or directory by id of GDrive file.
         """
         if local_destination is None:
             dl_path = Path(file.name)
         else:
             dl_path = Path(local_destination, file.name)
-        if file.type == "file":
-            dl_msg = DOWNLOADING_FILE_MSG.format(file_name=dl_path)
-        elif file.type == "dir":
-            dl_msg = MAKING_DIRECTORY_MSG.format(dir_name=dl_path)
-        else:
-            dl_msg = SKIP_G_SUITE_FILE_MSG.format(file_name=dl_path)
-        if dl_path.exists():
-            if ov:
-                dl_msg = super().get_ow_msg(dl_path)
-            else:
-                raise FileExistsError(
-                    errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
-        return dl_path, dl_msg
-
-    def download(self, file, local_destination=None, ov=False) -> None:
-        """
-        Download file or directory by id of GDrive file.
-        """
-        dl_path, dl_msg = GDriveWrapper._get_dl_path_and_msg(
-            file, local_destination, ov
-        )
-        print(dl_msg)
+        print(GdriveDLMessage(dl_path, file.type, ov))
         if file.type == "file":
             file_bytes = self._storage.download(file.id)
             dl_path.write_bytes(file_bytes)
@@ -105,7 +79,7 @@ class GDriveWrapper(BaseWrapper):
                     page_size=1000
                 )
                 for file in page.files:
-                    self.download(file,  local_destination=dl_path, ov=ov)
+                    self.download(file, local_destination=dl_path, ov=ov)
                 next_page_token = page.next_page_token
                 if next_page_token is None:
                     break
@@ -125,7 +99,7 @@ class GDriveWrapper(BaseWrapper):
             for root, dirs, filenames in tree:
                 root_path = PurePath(root)
                 parent_id = parents[root_path.parent] if parents else None
-                print(UPLOADING_DIRECTORY_MSG.format(dir_name=root))
+                print(ULMessage(root))
                 folder_id = self._storage.mkdir(
                     root_path.name,
                     parent_id=parent_id

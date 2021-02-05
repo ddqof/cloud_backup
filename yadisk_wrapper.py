@@ -7,10 +7,8 @@ from cloudbackup.yadisk import YaDisk
 from defaults import (
     YADISK_SORT_KEYS,
     LIST_NEXT_PAGE_MSG,
-    DOWNLOADING_FILE_MSG,
-    UPLOADING_DIRECTORY_MSG,
-    DOWNLOADING_DIR_AS_ZIP_MSG,
 )
+from cli_msgs import YadiskDLMessage, ULMessage
 
 
 class YaDiskWrapper(BaseWrapper):
@@ -82,7 +80,7 @@ class YaDiskWrapper(BaseWrapper):
             for root, dirs, filenames in tree:
                 root_path = Path(root)
                 target = PurePosixPath(destination, root_path)
-                print(UPLOADING_DIRECTORY_MSG.format(dir_name=root))
+                print(ULMessage(root))
                 self._storage.mkdir(target)
                 for filename in filenames:
                     super().put_file(
@@ -104,18 +102,7 @@ class YaDiskWrapper(BaseWrapper):
             dl_path = PurePath(local_destination, p.name)
         if file.type == "dir":
             dl_path = dl_path.with_suffix(".zip")
-            download_msg = DOWNLOADING_DIR_AS_ZIP_MSG.format(
-                dir_name=file.id, file_name=dl_path
-            )
-        else:
-            download_msg = DOWNLOADING_FILE_MSG.format(file_name=dl_path)
         dl_path = Path(dl_path)
-        if dl_path.exists():
-            if ov:
-                download_msg = super().get_ow_msg(dl_path)
-            else:
-                raise FileExistsError(
-                    errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
-        print(download_msg)
+        print(YadiskDLMessage(dl_path, file.type, file.id, ov))
         download_link = self._storage.get_download_link(file.id)
         dl_path.write_bytes(self._storage.download(download_link))
