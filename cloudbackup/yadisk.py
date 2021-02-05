@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 
 import requests
 import mimetypes
@@ -25,10 +26,10 @@ class YaDisk:
 
     def lsdir(
             self,
-            path=None,
-            sort="modified",
-            limit=20,
-            offset=0
+            path: str = None,
+            sort: str = "modified",
+            limit: int = 20,
+            offset: int = 0
     ) -> namedtuple("Page", ["file_info", "files"]):
         """
         Make request to get directory or file meta-information.
@@ -76,7 +77,7 @@ class YaDisk:
         except KeyError:
             return Page(YaDiskFile(json_r), [])
 
-    def get_file(self, path):
+    def get_file(self, path: str):
         """
         Get file or directory meta-information by path. Includes only
          name, type and path of target file.
@@ -132,7 +133,7 @@ class YaDisk:
             raise ApiResponseException(r.status_code, r.json()["description"])
         return [YaDiskFile(file) for file in r.json()["items"]]
 
-    def get_download_link(self, path):
+    def get_download_link(self, path: str):
         """
         Send request to YandexDisk API for getting link for file download.
 
@@ -157,7 +158,7 @@ class YaDisk:
             raise FileIsNotDownloadableException(path)
         return r["href"]
 
-    def download(self, download_link) -> bytes:
+    def download(self, download_link: str) -> bytes:
         """
         Make a request for downloading file from YaDisk storage.
 
@@ -180,7 +181,7 @@ class YaDisk:
             raise ApiResponseException(r.status_code, r.json()["description"])
         return r.content
 
-    def get_upload_link(self, file_path, destination) -> str:
+    def get_upload_link(self, file_path: str, destination: str) -> str:
         """
         Send initial request to get link for download a file.
 
@@ -196,7 +197,7 @@ class YaDisk:
             ApiResponseException: an error occurred accessing API.
         """
         metadata = {
-            "name": os.path.basename(file_path),
+            "name": Path(file_path).parent,
             "mime_type": mimetypes.guess_type(file_path)[0],
         }
         r = requests.get(
@@ -208,7 +209,7 @@ class YaDisk:
             raise ApiResponseException(r.status_code, r.json()["description"])
         return r.json()["href"]
 
-    def upload_file(self, upload_link, file_data) -> None:
+    def upload_file(self, upload_link: str, file_data: bytes) -> None:
         """
         Upload a entire file by one single request. Before use
          this method call `get_upload_link` and provide upload
@@ -229,7 +230,7 @@ class YaDisk:
         if r.status_code not in {201, 202}:
             raise ApiResponseException(r.status_code, r.json()["description"])
 
-    def mkdir(self, destination) -> None:
+    def mkdir(self, destination: str) -> None:
         """
         Make a request for making directory on YandexDisk storage.
 

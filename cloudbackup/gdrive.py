@@ -1,9 +1,9 @@
 import json
 import requests
-import os
 import mimetypes
 
 from collections import namedtuple
+from pathlib import Path
 from ._authenticator import Authenticator
 from .file_objects import GDriveFile
 from .exceptions import ApiResponseException
@@ -35,7 +35,7 @@ class GDrive:
             "Authorization": f"Bearer {Authenticator().get_gdrive_token()}"
         }
 
-    def download(self, file_id) -> bytes:
+    def download(self, file_id: str) -> bytes:
         """
         Make request for downloading file from GoogleDrive storage.
 
@@ -60,12 +60,12 @@ class GDrive:
 
     def lsdir(
             self,
-            dir_id=None,
-            trashed=False,
-            owners=None,
-            page_size=20,
-            page_token=None,
-            order_by="modifiedTime"
+            dir_id: str = None,
+            trashed: bool = False,
+            owners: list = None,
+            page_size: int = 20,
+            page_token: str = None,
+            order_by: str = "modifiedTime"
     ) -> namedtuple("Page", ["files", "next_page_token"]):
         """
         Make request to get list of `page_size` size consists of
@@ -134,7 +134,7 @@ class GDrive:
                 None
             )
 
-    def mkdir(self, name, parent_id=None) -> str:
+    def mkdir(self, name: str, parent_id: str = None) -> str:
         """
         Create a new directory in Google Drive storage.
 
@@ -163,7 +163,7 @@ class GDrive:
                 r.status_code, r.json()["error"]["message"])
         return r.json()["id"]
 
-    def remove(self, file_id, permanently=False) -> None:
+    def remove(self, file_id: str, permanently: bool=False) -> None:
         """
         Method allows to remove permanently or move file to the trash.
 
@@ -190,7 +190,7 @@ class GDrive:
             raise ApiResponseException(
                 r.status_code, r.json()["error"]["message"])
 
-    def get_upload_link(self, file_path, parent_id="root") -> str:
+    def get_upload_link(self, file_path: str, parent_id="root") -> str:
         """
         Send request to Google Drive API for getting link for file upload.
 
@@ -204,12 +204,11 @@ class GDrive:
         Raises:
              ApiResponseException: an error occurred accessing API
         """
-        filename = os.path.basename(file_path)
         headers = {
             "X-Upload-Content-Type": mimetypes.guess_type(file_path)[0]
         }
         headers.update(self._auth_headers)
-        metadata = {"name": filename}
+        metadata = {"name": Path(file_path).parent}
         if parent_id is not None:
             metadata["parents"] = [parent_id]
         metadata = json.dumps(metadata)
@@ -224,7 +223,7 @@ class GDrive:
                 r.status_code, r.json()["error"]["message"])
         return r.headers["location"]
 
-    def upload_file(self, upload_link, file_data) -> None:
+    def upload_file(self, upload_link: str, file_data: bytes) -> None:
         """
         Upload full file data to the Google Drive by one single request
         using upload link received from `get_upload_link` method.
@@ -245,7 +244,7 @@ class GDrive:
             raise ApiResponseException(
                 r.status_code, r.json()["error"]["message"])
 
-    def get_file(self, file_id) -> GDriveFile:
+    def get_file(self, file_id: str) -> GDriveFile:
         """
         Get file or directory meta-information by file_id.
 
