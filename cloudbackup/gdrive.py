@@ -163,7 +163,7 @@ class GDrive:
                 r.status_code, r.json()["error"]["message"])
         return r.json()["id"]
 
-    def remove(self, file_id: str, permanently: bool=False) -> None:
+    def remove(self, file_id: str, permanently: bool = False) -> None:
         """
         Method allows to remove permanently or move file to the trash.
 
@@ -190,7 +190,7 @@ class GDrive:
             raise ApiResponseException(
                 r.status_code, r.json()["error"]["message"])
 
-    def get_upload_link(self, file_path: str, parent_id="root") -> str:
+    def get_upload_link(self, file_path: Path, parent_id="root") -> str:
         """
         Send request to Google Drive API for getting link for file upload.
 
@@ -208,7 +208,7 @@ class GDrive:
             "X-Upload-Content-Type": mimetypes.guess_type(file_path)[0]
         }
         headers.update(self._auth_headers)
-        metadata = {"name": Path(file_path).parent}
+        metadata = {"name": file_path.name}
         if parent_id is not None:
             metadata["parents"] = [parent_id]
         metadata = json.dumps(metadata)

@@ -181,7 +181,7 @@ class YaDisk:
             raise ApiResponseException(r.status_code, r.json()["description"])
         return r.content
 
-    def get_upload_link(self, file_path: str, destination: str) -> str:
+    def get_upload_link(self, file_path: Path, destination: str) -> str:
         """
         Send initial request to get link for download a file.
 
@@ -197,7 +197,7 @@ class YaDisk:
             ApiResponseException: an error occurred accessing API.
         """
         metadata = {
-            "name": Path(file_path).parent,
+            "name": file_path.name,
             "mime_type": mimetypes.guess_type(file_path)[0],
         }
         r = requests.get(

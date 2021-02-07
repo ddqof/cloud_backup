@@ -1,4 +1,5 @@
 import mimetypes
+from pathlib import Path
 
 import pytest
 import json
@@ -284,9 +285,9 @@ def test_mkdir(yadisk):
 
 @responses.activate
 def test_get_upload_link(yadisk):
-    filename = "_yadisk_api_responses.py"
-    name = f'"name": "{filename}"'
-    mime_type = f'"mime_type": "{mimetypes.guess_type(filename)[0]}"'
+    file_path = Path("_yadisk_api_responses.py")
+    name = f'"name": "{file_path.name}"'
+    mime_type = f'"mime_type": "{mimetypes.guess_type(file_path)[0]}"'
     req_params = {
         "path": "/",
         "fields": "{" + name + ", " + mime_type + "}"
@@ -298,7 +299,7 @@ def test_get_upload_link(yadisk):
         content_type="application/json",
         json={"href": "some_upload_link"}
     )
-    yadisk.get_upload_link(filename, "/")
+    yadisk.get_upload_link(file_path, "/")
     assert len(responses.calls) == 1
     assert "Authorization" in responses.calls[0].request.headers
     assert responses.calls[0].request.params == req_params

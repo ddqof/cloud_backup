@@ -1,6 +1,5 @@
 import pytest
-from pathlib import Path
-from unittest.mock import Mock, call, patch
+from unittest.mock import Mock, patch
 
 from _base_wrapper import BaseWrapper
 
@@ -15,7 +14,7 @@ def test_put_file(wrapper, tmpdir, capsys):
     test_file = tmpdir.join("test.txt")
     test_file.write_binary(b"hello from test file")
     wrapper._storage.get_upload_link.return_value = "upload link"
-    wrapper.put_file(test_file.strpath, "root")
+    wrapper._put_file(test_file.strpath, "root")
     wrapper._storage.get_upload_link.assert_called_once_with(
         test_file.strpath, "root"
     )

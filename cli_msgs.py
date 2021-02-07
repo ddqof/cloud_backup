@@ -1,7 +1,6 @@
 import errno
 import os
 from pathlib import Path
-
 from defaults import (
     OVERWRITE_REQUEST_MSG,
     OVERWRITING_MSG,
@@ -49,12 +48,8 @@ class GdriveDLMessage(DLMessage):
             msg = SKIPPING_MSG
         else:
             msg = DOWNLOADING_MSG
-        if self._path.exists():
-            if self._ov:
-                msg = OVMessage(self._path).str_value()
-            else:
-                raise FileExistsError(
-                    errno.EEXIST, os.strerror(errno.EEXIST), str(self._path))
+        if self._path.exists() and self._ov:
+            msg = OVMessage(self._path).str_value()
         return msg.format(self._path)
 
 

@@ -1,10 +1,7 @@
 import errno
 import os
 import shutil
-from pathlib import PurePath, Path
-
 from _base_wrapper import BaseWrapper
-
 from defaults import (
     GDRIVE_SORT_KEYS,
     ABORTED_MSG,
@@ -12,6 +9,7 @@ from defaults import (
 )
 from cloudbackup.gdrive import GDrive
 from cli_msgs import GdriveDLMessage, ULMessage
+from pathlib import PurePath, Path
 
 
 class GDriveWrapper(BaseWrapper):
@@ -22,7 +20,7 @@ class GDriveWrapper(BaseWrapper):
     def __init__(self):
         super().__init__(GDrive())
 
-    def lsdir(self, file_id, order_key="modifiedTime") -> None:
+    def lsdir(self, file_id, order_key) -> None:
         """
         Prints content of directory or file itself. Prints all files
          if file_id is not provided. Otherwise prints files page by page.
@@ -54,21 +52,25 @@ class GDriveWrapper(BaseWrapper):
             else:
                 break
 
-    def download(self, file, local_destination=None, ov=False) -> None:
+    def download(self, file, local_destination, ov=False) -> None:
         """
-        Download file or directory by id of GDrive file.
+        Download file or directory from GoogleDrive storage.
         """
         if local_destination is None:
             dl_path = Path(file.name)
         else:
             dl_path = Path(local_destination, file.name)
         print(GdriveDLMessage(dl_path, file.type, ov).str_value())
+        if dl_path.is_dir() and ov:
+            shutil.rmtree(dl_path)
+        elif dl_path.is_file() and ov:
+            dl_path.unlink()
+        elif dl_path.exists() and not ov:
+            raise FileExistsError(
+                errno.EEXIST, os.strerror(errno.EEXIST), dl_path)
         if file.type == "file":
-            file_bytes = self._storage.download(file.id)
-            dl_path.write_bytes(file_bytes)
+            dl_path.write_bytes(self._storage.download(file.id))
         elif file.type == "dir":
-            if dl_path.exists():
-                shutil.rmtree(dl_path)
             dl_path.mkdir()
             next_page_token = None
             while True:
@@ -92,7 +94,7 @@ class GDriveWrapper(BaseWrapper):
         if not file_path.name:
             file_path = file_path.resolve()
         if file_path.is_file():
-            super().put_file(local_path=file_path, destination=parents)
+            self._put_file(local_path=file_path, destination=parents)
         elif file_path.is_dir():
             parents = {}
             tree = os.walk(file_path)
@@ -105,7 +107,7 @@ class GDriveWrapper(BaseWrapper):
                     parent_id=parent_id
                 )
                 for file in filenames:
-                    super().put_file(
+                    self._put_file(
                         local_path=Path(root, file), destination=folder_id
                     )
                 parents[root_path] = folder_id

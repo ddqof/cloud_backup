@@ -1,8 +1,8 @@
 import pytest
+import responses
 import json
 from unittest.mock import patch, Mock
 from urllib.parse import urlencode
-import responses
 from cloudbackup.gdrive import GDrive
 from cloudbackup.file_objects import GDriveFile
 from cloudbackup.tests._gdrive_api_responses import (
@@ -10,6 +10,7 @@ from cloudbackup.tests._gdrive_api_responses import (
     FULL_LISTED_LSDIR_RESPONSE,
     PAGINATED_LSDIR_RESPONSE
 )
+from pathlib import Path
 
 
 @pytest.fixture()
@@ -254,7 +255,8 @@ def test_get_upload_link(gdrive):
         headers={"Location": "https://www.googleapis.com/upload/drive/v3/"
                              "files?uploadType=resumable&upload_id=some_id"}
     )
-    link = gdrive.get_upload_link("_gdrive_api_responses.py")
+    file_path = Path("_gdrive_api_responses.py")
+    link = gdrive.get_upload_link(file_path)
     assert len(responses.calls) == 1
     check_auth_headers(responses.calls[0].request.headers)
     assert "X-Upload-Content-Type" in responses.calls[0].request.headers

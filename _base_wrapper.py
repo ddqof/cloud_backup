@@ -1,9 +1,6 @@
 from abc import ABC, abstractmethod
-
 from cli_msgs import ULMessage, DeleteConfirm, DeleteMessage
-from defaults import (
-    RM_ACCESS_DENIED_MSG,
-)
+from defaults import RM_ACCESS_DENIED_MSG
 
 
 class BaseWrapper(ABC):
@@ -11,7 +8,7 @@ class BaseWrapper(ABC):
     def __init__(self, storage):
         self._storage = storage
 
-    def put_file(self, local_path, destination):
+    def _put_file(self, local_path, destination):
         """
         Get upload link and then upload file raw binary data using this link.
         """

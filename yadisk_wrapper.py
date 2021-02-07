@@ -71,7 +71,7 @@ class YaDiskWrapper(BaseWrapper):
         """
         file_path = Path(filename)
         if file_path.is_file():
-            super().put_file(
+            self._put_file(
                 local_path=file_path,
                 destination=PurePosixPath(destination, file_path.name)
             )
@@ -83,7 +83,7 @@ class YaDiskWrapper(BaseWrapper):
                 print(ULMessage(root).str_value())
                 self._storage.mkdir(target)
                 for filename in filenames:
-                    super().put_file(
+                    self._put_file(
                         local_path=Path(root, filename),
                         destination=PurePosixPath(str(target), filename)
                     )
@@ -91,7 +91,7 @@ class YaDiskWrapper(BaseWrapper):
             raise FileNotFoundError(
                 errno.ENOENT, os.strerror(errno.ENOENT), file_path)
 
-    def download(self, file, local_destination=None, ov=False) -> None:
+    def download(self, file, local_destination, ov=False) -> None:
         """
         Download file on remote to local_destination.
         """
