@@ -89,11 +89,17 @@ class GDriveWrapper(BaseWrapper):
     def upload(self, filename, parents) -> None:
         """
         Upload file or directory by path.
+
+        P.S. os.walk returns root, dirs and filenames in not
+        alphabetic order so it is hard to test it behaviour of
+        this method. Due to this I use sorted(filenames) only for
+        better testing.
         """
         file_path = Path(filename)
         if not file_path.name:
             file_path = file_path.resolve()
         if file_path.is_file():
+            print(ULMessage(file_path).str_value())
             self._put_file(local_path=file_path, destination=parents)
         elif file_path.is_dir():
             parents = {}
@@ -106,10 +112,10 @@ class GDriveWrapper(BaseWrapper):
                     root_path.name,
                     parent_id=parent_id
                 )
-                for file in filenames:
-                    self._put_file(
-                        local_path=Path(root, file), destination=folder_id
-                    )
+                for file in sorted(filenames):
+                    dest = Path(root, file)
+                    print(ULMessage(dest).str_value())
+                    self._put_file(local_path=dest, destination=folder_id)
                 parents[root_path] = folder_id
         else:
             raise FileNotFoundError(

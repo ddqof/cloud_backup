@@ -55,6 +55,27 @@ def not_existing_dir():
     shutil.rmtree(p)
 
 
+@pytest.fixture()
+def complex_dir(tmp_path):
+    file_1 = tmp_path / "file_1.txt"
+    file_2 = tmp_path / "file_2.txt"
+    file_1.touch()
+    file_2.touch()
+    inner_dir = tmp_path / "dir"
+    inner_dir.mkdir()
+    inner_file_1 = inner_dir / "inner_file_1.txt"
+    inner_file_2 = inner_dir / "inner_file_2.txt"
+    inner_file_1.touch()
+    inner_file_2.touch()
+    ComplexDir = namedtuple(
+        "ComplexDir",
+        ["path", "file_1", "file_2", "inner_dir",
+         "inner_file_1", "inner_file_2"]
+    )
+    return ComplexDir(tmp_path, file_1, file_2,
+                      inner_dir, inner_file_1, inner_file_2)
+
+
 def test_lsdir_with_file_id_calls_storage_method_correctly(wrapper):
     page = Mock()
     page.files = []
@@ -204,7 +225,9 @@ def test_upload_resolves_dot_directory(wrapper, tmp_path):
     )
 
 
-def test_upload_handles_complex_structured_dir_correctly(wrapper, tmp_path):
+def test_upload_handles_complex_structured_dir_correctly(
+        wrapper, tmp_path, complex_dir
+):
     """
     Tests checks that upload method calls storage.mkdir and
     wrapper._put_file in particular order. Last asserts cannot be
@@ -213,33 +236,32 @@ def test_upload_handles_complex_structured_dir_correctly(wrapper, tmp_path):
     P.S. this test doesn't check that wrapper.upload method
     correctly handles destination ids.
     """
-    test_file_1 = tmp_path / "testfile_1.txt"
-    test_file_2 = tmp_path / "testfile_2.txt"
-    test_file_1.touch()
-    test_file_2.touch()
-    inner_dir = tmp_path / "test_dir"
-    inner_dir.mkdir()
-    inner_test_file_1 = inner_dir / "inner_testfile_1.txt"
-    inner_test_file_2 = inner_dir / "inner_testfile_2.txt"
-    inner_test_file_1.touch()
-    inner_test_file_2.touch()
     wrapper._storage.mkdir = Mock()
     wrapper._put_file = Mock()
-    wrapper.upload(tmp_path, "root")
+    wrapper.upload(complex_dir.path, "root")
     assert len(wrapper._storage.mkdir.mock_calls) == 2
-    assert wrapper._storage.mkdir.call_args_list[0].args[0] == tmp_path.name
-    assert wrapper._storage.mkdir.call_args_list[1].args[0] == inner_dir.name
+    assert wrapper._storage.mkdir.call_args_list[0].args[0] ==\
+           complex_dir.path.name
+    assert wrapper._storage.mkdir.call_args_list[1].args[0] ==\
+           complex_dir.inner_dir.name
     assert len(wrapper._put_file.mock_calls) == 4
-    assert wrapper._put_file.call_args_list[0].kwargs["local_path"] in \
-           {test_file_1, test_file_2}
-    assert wrapper._put_file.call_args_list[1].kwargs["local_path"] in \
-           {test_file_1, test_file_2}
-    assert wrapper._put_file.call_args_list[2].kwargs["local_path"] in \
-           {inner_test_file_1, inner_test_file_2}
-    assert wrapper._put_file.call_args_list[3].kwargs["local_path"] in \
-           {inner_test_file_1, inner_test_file_2}
+    assert wrapper._put_file.call_args_list[0].kwargs["local_path"] == \
+           complex_dir.file_1
+    assert wrapper._put_file.call_args_list[1].kwargs["local_path"] == \
+           complex_dir.file_2
+    assert wrapper._put_file.call_args_list[2].kwargs["local_path"] == \
+           complex_dir.inner_file_1
+    assert wrapper._put_file.call_args_list[3].kwargs["local_path"] == \
+           complex_dir.inner_file_2
 
 
-def test_upload_prints_correct_inf(wrapper):
-    pass
-    # TODO
+def test_upload_dir_prints_correct_inf(wrapper, complex_dir, capsys):
+    wrapper._put_file = Mock()
+    wrapper.upload(complex_dir.path, "root")
+    captured = capsys.readouterr()
+    assert captured.out == f"Uploading: `{complex_dir.path}`...\n" \
+                           f"Uploading: `{complex_dir.file_1}`...\n" \
+                           f"Uploading: `{complex_dir.file_2}`...\n" \
+                           f"Uploading: `{complex_dir.inner_dir}`...\n" \
+                           f"Uploading: `{complex_dir.inner_file_1}`...\n" \
+                           f"Uploading: `{complex_dir.inner_file_2}`...\n"
