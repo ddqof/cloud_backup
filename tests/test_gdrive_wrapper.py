@@ -230,9 +230,8 @@ def test_upload_handles_complex_structured_dir_correctly(
 ):
     """
     Tests checks that upload method calls storage.mkdir and
-    wrapper._put_file in particular order. Last asserts cannot be
-    checked for exact equals because of os.walk under the hood of
-    wrapper.upload method generates list of files in random order.
+    wrapper._put_file in particular order.
+
     P.S. this test doesn't check that wrapper.upload method
     correctly handles destination ids.
     """
