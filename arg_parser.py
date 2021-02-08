@@ -29,7 +29,7 @@ def parse_args():
         "remote_file",
         nargs="?",
         help="If work with GDrive pass directory id. If work with YaDisk"
-             " pass directory path. If not specified listing all files.")
+             " pass directory path. If not specified lists all files.")
     ls_parser.add_argument(
         '-o', "--order_by",
         default="modified",
@@ -51,16 +51,11 @@ def parse_args():
         parents=[remote_file_parser])
     dl_parser.add_argument(
         "destination",
-        help="Pass directory where you want to save downloaded file."
-             " If not specified download to present working directory.")
+        help="Pass directory where you want to save downloaded file.")
     dl_parser.add_argument(
         "-ov", "--overwrite",
         action="store_true",
         help="overwrite if file already exists")
-    dl_parser.add_argument(
-        "-f", "--force",
-        action="store_true",
-        help="skip G.Suite files when downloading a directory")
 
     ul_parser = subparsers.add_parser(
         "ul",
