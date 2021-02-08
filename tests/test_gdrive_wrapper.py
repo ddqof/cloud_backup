@@ -239,9 +239,9 @@ def test_upload_handles_complex_structured_dir_correctly(
     wrapper._put_file = Mock()
     wrapper.upload(complex_dir.path, "root")
     assert len(wrapper._storage.mkdir.mock_calls) == 2
-    assert wrapper._storage.mkdir.call_args_list[0].args[0] ==\
+    assert wrapper._storage.mkdir.call_args_list[0].args[0] == \
            complex_dir.path.name
-    assert wrapper._storage.mkdir.call_args_list[1].args[0] ==\
+    assert wrapper._storage.mkdir.call_args_list[1].args[0] == \
            complex_dir.inner_dir.name
     assert len(wrapper._put_file.mock_calls) == 4
     assert wrapper._put_file.call_args_list[0].kwargs["local_path"] == \
@@ -264,3 +264,9 @@ def test_upload_dir_prints_correct_inf(wrapper, complex_dir, capsys):
                            f"Uploading: `{complex_dir.inner_dir}`...\n" \
                            f"Uploading: `{complex_dir.inner_file_1}`...\n" \
                            f"Uploading: `{complex_dir.inner_file_2}`...\n"
+
+
+def test_upload_raises_file_not_found_err(wrapper, tmp_path):
+    not_existing_file = tmp_path / "not_existing_file.txt"
+    with pytest.raises(FileNotFoundError):
+        wrapper.upload(not_existing_file, "root")
