@@ -23,7 +23,11 @@ class GDriveWrapper(BaseWrapper):
     def lsdir(self, file_id, order_key) -> None:
         """
         Prints content of directory or file itself. Prints all files
-         if file_id is not provided. Otherwise prints files page by page.
+        if file_id is not provided. Otherwise prints files page by page.
+
+        This method should properly call storage.lsdir method, print
+        corresponding file info and if `file_id` is provided list files
+        page by page by asking user before every next page.
         """
         page_token = None
         if file_id is None:
@@ -54,12 +58,13 @@ class GDriveWrapper(BaseWrapper):
 
     def download(self, file, local_destination, ov=False) -> None:
         """
-        Download file or directory from GoogleDrive storage.
+        Download file or directory from GoogleDrive storage. This method
+        should print what file or dir is being downloading, build
+        correct download path, should remove local file before download
+        if ov=True and correctly call storage.download method (storage
+        method takes care about `file` arg).
         """
-        if local_destination is None:
-            dl_path = Path(file.name)
-        else:
-            dl_path = Path(local_destination, file.name)
+        dl_path = Path(local_destination, file.name)
         print(GdriveDLMessage(dl_path, file.type, ov).str_value())
         if dl_path.is_dir() and ov:
             shutil.rmtree(dl_path)
@@ -88,7 +93,10 @@ class GDriveWrapper(BaseWrapper):
 
     def upload(self, filename, parents) -> None:
         """
-        Upload file or directory by path.
+        Upload file or directory by path. This method should print
+        corresponding info about what file is uploading, determine
+        what type of file is uploading and correctly calls
+        storage.upload method.
 
         P.S. os.walk returns root, dirs and filenames in not
         alphabetic order so it is hard to test it behaviour of

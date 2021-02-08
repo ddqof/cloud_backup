@@ -28,16 +28,16 @@ GDRIVE_DIRECTORY_TYPE = "application/vnd.google-apps.folder"
 G_SUITE_FILES_TYPE = "application/vnd.google-apps"
 
 CONFIRM_CHOICE_STRING = "([y]/n) "
-ABORTED_MSG = "Aborted"
-OW_ACCESS_DENIED_MSG = "No access was granted to overwrite"
-RM_ACCESS_DENIED_MSG = "No access was granted to delete"
+ABORTED_MSG = "Aborted."
+OW_ACCESS_DENIED_MSG = "No access was granted to overwrite."
+RM_ACCESS_DENIED_MSG = "No access was granted to delete."
 
 UPLOAD_COMPLETED_MSG = "Upload completed."
 DOWNLOAD_COMPLETED_MSG = "Download completed."
-SUCCESSFUL_DOWNLOAD_MSG = "Successfully downloaded `{}`"
-SUCCESSFUL_UPLOAD_MSG = "Successfully uploaded `{}`"
-SUCCESSFUL_DELETE_MSG = "Successfully deleted  `{}`"
-SUCCESSFUL_TRASH_MSG = "Successfully moved `{}` to the trash"
+SUCCESSFUL_DOWNLOAD_MSG = "Successfully downloaded `{}`."
+SUCCESSFUL_UPLOAD_MSG = "Successfully uploaded `{}`."
+SUCCESSFUL_DELETE_MSG = "Successfully deleted  `{}`."
+SUCCESSFUL_TRASH_MSG = "Successfully moved `{}` to the trash."
 
 G_SUITE_FILE = "[S]: `{}` isn't downloadable."
 

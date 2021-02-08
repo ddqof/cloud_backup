@@ -122,6 +122,20 @@ def test_lsdir_with_file_id_prints_correct_data(wrapper, capsys, ls_pages):
         assert captured.out == "4\n3\n2\n1\n0\n"
 
 
+def test_lsdir_prints_only_one_page_and_aborted_msg_if_user_doesnt_confirm(
+        wrapper, ls_pages, capsys
+):
+    wrapper._storage.lsdir = Mock(side_effect=ls_pages)
+    with patch("builtins.input") as input_mock:
+        input_mock.return_value = "n"
+        wrapper.lsdir("random_id", "modified")
+        assert input_mock.mock_calls == [
+            call("List next page? ([y]/n) ")
+        ]
+        captured = capsys.readouterr()
+        assert captured.out == "4\n3\nAborted.\n"
+
+
 def test_lsdir_without_file_id_prints_correct_data(wrapper, capsys, ls_pages):
     wrapper._storage.lsdir = Mock(side_effect=ls_pages)
     with patch("builtins.input") as input_mock:
@@ -129,6 +143,11 @@ def test_lsdir_without_file_id_prints_correct_data(wrapper, capsys, ls_pages):
         input_mock.assert_not_called()
         captured = capsys.readouterr()
         assert captured.out == "4\n3\n2\n1\n0\n"
+
+
+def test_download_raises_type_error_when_local_dest_is_none(wrapper):
+    with pytest.raises(TypeError):
+        wrapper.download(Mock(), None)
 
 
 def test_download_file_prints_correct_data(capsys, wrapper, not_existing_file):
