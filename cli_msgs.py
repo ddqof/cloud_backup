@@ -11,7 +11,8 @@ from defaults import (
     DOWNLOADING_AS_ZIP_MSG,
     SUCCESSFUL_DELETE_MSG,
     SUCCESSFUL_TRASH_MSG,
-    DELETE_CONFIRMATION_MSG
+    DELETE_CONFIRMATION_MSG,
+    MOVE_TO_TRASH_CONFIRMATION_MSG
 )
 
 
@@ -86,11 +87,16 @@ class ULMessage:
 
 class DeleteConfirm:
 
-    def __init__(self, file_name: str):
+    def __init__(self, file_name: str, permanently: bool):
         self._file_name = file_name
+        self._permanently = permanently
 
     def str_value(self):
-        return DELETE_CONFIRMATION_MSG.format(self._file_name)
+        if self._permanently:
+            msg = DELETE_CONFIRMATION_MSG
+        else:
+            msg = MOVE_TO_TRASH_CONFIRMATION_MSG
+        return msg.format(self._file_name)
 
 
 class DeleteMessage:

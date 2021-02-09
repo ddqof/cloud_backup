@@ -36,7 +36,7 @@ UPLOAD_COMPLETED_MSG = "Upload completed."
 DOWNLOAD_COMPLETED_MSG = "Download completed."
 SUCCESSFUL_DOWNLOAD_MSG = "Successfully downloaded `{}`."
 SUCCESSFUL_UPLOAD_MSG = "Successfully uploaded `{}`."
-SUCCESSFUL_DELETE_MSG = "Successfully deleted  `{}`."
+SUCCESSFUL_DELETE_MSG = "Successfully deleted `{}`."
 SUCCESSFUL_TRASH_MSG = "Successfully moved `{}` to the trash."
 
 G_SUITE_FILE = "[S]: `{}` isn't downloadable."
