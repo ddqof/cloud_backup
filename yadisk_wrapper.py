@@ -22,47 +22,46 @@ class YaDiskWrapper(BaseWrapper):
     def lsdir(self, path, order_key) -> None:
         """
         Prints content of `path`. Prints all files
-         excluding directories if path is None.
-         Otherwise prints files page by page.
+        excluding directories if path is None.
+        Otherwise prints files page by page.
         """
         offset = 0
-        if path is None:
-            limit, all_files = 1000, []
-            while True:
-                page_files = self._storage.list_files(
+        while True:
+            if path is None:
+                limit = 1000
+                files = self._storage.list_files(
                     limit=limit,
                     sort=YADISK_SORT_KEYS[order_key],
                     offset=offset
                 )
-                if page_files:
-                    all_files.extend(page_files)
-                    offset += limit
-                else:
-                    break
-            for file in all_files:
-                print(file.str_value())
-        else:
-            page = self._storage.lsdir(
-                path,
-                offset=offset,
-                sort=YADISK_SORT_KEYS[order_key]
-            )
-            while True:
-                for file in page.files:
-                    print(file.str_value())
-                offset += 20
-                page = self._storage.lsdir(
+            else:
+                limit = 20
+                files = self._storage.lsdir(
                     path,
+                    limit=limit,
                     offset=offset,
                     sort=YADISK_SORT_KEYS[order_key]
                 )
-                if not page.files:
-                    break
+                next_page_is_not_empty = bool(
+                    self._storage.lsdir(
+                        path,
+                        limit=limit,
+                        offset=offset + limit,
+                        sort=YADISK_SORT_KEYS[order_key])
+                )
+            offset += limit
+            for file in files:
+                print(file.str_value())
+            if path is None and len(files) == limit:
+                continue
+            elif path is not None and next_page_is_not_empty:
                 user_confirm = input(LIST_NEXT_PAGE_MSG)
                 if user_confirm in {"y", "yes", ""}:
                     continue
                 else:
                     break
+            else:
+                break
 
     def upload(self, filename, destination) -> None:
         """

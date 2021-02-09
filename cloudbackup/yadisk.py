@@ -1,6 +1,5 @@
 import json
-import os
-from pathlib import Path
+from typing import List
 
 import requests
 import mimetypes
@@ -11,6 +10,7 @@ from cloudbackup.exceptions import (
     FileIsNotDownloadableException
 )
 from cloudbackup.file_objects import YaDiskFile
+from pathlib import Path
 
 
 class YaDisk:
@@ -30,7 +30,7 @@ class YaDisk:
             sort: str = "modified",
             limit: int = 20,
             offset: int = 0
-    ) -> namedtuple("Page", ["file_info", "files"]):
+    ) -> List[YaDiskFile]:
         """
         Make request to get directory or file meta-information.
 
@@ -46,10 +46,7 @@ class YaDisk:
              (used for paginated output).
 
         Returns:
-            |namedtuple| Page("dir_info", "files"). `dir_info` field contains
-             meta-information of the file or directory itself. `files` contains
-              list of `limit` size contains files of directory. If called
-               for file instead of directory, `files` field  will be empty.
+            List of YaDisk files.
 
         Raises:
             ApiResponseException: an error occurred accessing API.
@@ -67,15 +64,10 @@ class YaDisk:
         )
         if r.status_code != 200:
             raise ApiResponseException(r.status_code, r.json()["description"])
-        Page = namedtuple("Page", ["file_info", "files"])
-        json_r = r.json()
         try:
-            return Page(
-                YaDiskFile(json_r),
-                [YaDiskFile(file) for file in json_r["_embedded"]["items"]]
-            )
+            return [YaDiskFile(file) for file in r.json()["_embedded"]["items"]]
         except KeyError:
-            return Page(YaDiskFile(json_r), [])
+            return []
 
     def get_file(self, path: str):
         """
