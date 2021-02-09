@@ -22,9 +22,11 @@ class BaseWrapper(ABC):
         Remove file or directory on GoogleDrive or YandexDisk storage.
         """
         file = self._storage.get_file(file_id)
-        user_confirm = input(DeleteConfirm(file.name).str_value())
+        user_confirm = input(
+            DeleteConfirm(file.name, permanently).str_value()
+        )
         if user_confirm in {"y", "yes", ""}:
-            self._storage.remove(file_id, permanently=permanently)
+            self._storage.remove(file_id, permanently)
             print(DeleteMessage(file.name, permanently).str_value())
         else:
             raise PermissionError(RM_ACCESS_DENIED_MSG)

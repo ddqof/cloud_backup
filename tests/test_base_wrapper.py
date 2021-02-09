@@ -33,15 +33,15 @@ def test_put_file_gets_upload_link_and_then_uploads(wrapper, tmp_path):
     ]
 
 
-def test_remove_prints_correct_data(wrapper, capsys, remote_file):
+def test_remove_not_permanently_prints_trash_msg(wrapper, capsys, remote_file):
     wrapper._storage.get_file.return_value = remote_file
     with patch("builtins.input") as input_mock:
         input_mock.return_value = "y"
         wrapper.remove("some_id", permanently=False)
         assert input_mock.mock_calls == [
             call(
-                "Are you sure you want to permanently delete "
-                "`test_file`? ([y]/n) "
+                "Are you sure you want to move "
+                "`test_file` to the trash? ([y]/n) "
             )
         ]
 
@@ -52,5 +52,5 @@ def test_remove_call_storage_remove_properly(wrapper, remote_file):
         input_mock.return_value = "y"
         wrapper.remove("some_id", permanently=False)
         assert wrapper._storage.remove.mock_calls == [
-            call("some_id", permanently=False)
+            call("some_id", False)
         ]
