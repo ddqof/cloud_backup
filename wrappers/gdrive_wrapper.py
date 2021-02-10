@@ -3,7 +3,7 @@ import os
 import shutil
 from wrappers._base_wrapper import BaseWrapper
 from cloudbackup.file_objects import GDriveFile
-from defaults import (
+from wrappers.defaults import (
     GDRIVE_SORT_KEYS,
     ABORTED_MSG,
     LIST_NEXT_PAGE_MSG,

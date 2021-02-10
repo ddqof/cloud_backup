@@ -1,7 +1,7 @@
 import errno
 import os
 from pathlib import Path
-from defaults import (
+from wrappers.defaults import (
     OVERWRITE_REQUEST_MSG,
     OVERWRITING_MSG,
     OW_ACCESS_DENIED_MSG,

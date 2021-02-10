@@ -5,7 +5,7 @@ from pathlib import PurePath, Path, PurePosixPath
 from wrappers._base_wrapper import BaseWrapper
 from cloudbackup.file_objects import YaDiskFile
 from cloudbackup.yadisk import YaDisk
-from defaults import (
+from wrappers.defaults import (
     YADISK_SORT_KEYS,
     LIST_NEXT_PAGE_MSG,
 )

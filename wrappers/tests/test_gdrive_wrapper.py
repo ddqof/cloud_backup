@@ -115,7 +115,7 @@ def test_download_file_prints_correct_data(capsys, wrapper, not_existing_file):
     remote_target.type = "file"
     remote_target.name = not_existing_file.name
     wrapper._storage.download = Mock(return_value=b"any bytes")
-    wrapper.download(remote_target, Path("."))
+    wrapper.download(remote_target, Path(""))
     captured = capsys.readouterr()
     assert captured.out == f"Downloading: `{not_existing_file}`...\n"
 
@@ -128,7 +128,7 @@ def test_download_dir_prints_correct_data(
     remote_target.name = not_existing_dir.name
     wrapper._storage.download = Mock(return_value=b"hello world")
     wrapper._storage.lsdir.return_value = dl_page
-    wrapper.download(remote_target, Path("."))
+    wrapper.download(remote_target, Path(""))
     captured = capsys.readouterr()
     assert captured.out == (
         f"Downloading: `{not_existing_dir}`...\n"
@@ -149,7 +149,7 @@ def test_download_dir_happy_path(capsys, wrapper, not_existing_dir, dl_page):
     wrapper._storage.download = Mock(
         side_effect=[b"hello from 0", b"hello from 1"]
     )
-    wrapper.download(remote_target, Path("."))
+    wrapper.download(remote_target, Path(""))
     assert not_existing_dir.exists()
     inner_file_0 = Path(not_existing_dir, "test_file-0")
     inner_file_1 = Path(not_existing_dir, "test_file-1")
@@ -197,9 +197,9 @@ def test_upload_file_handles_simple_file_correctly(wrapper, tmp_path):
 
 def test_upload_resolves_dot_directory(wrapper, tmp_path):
     wrapper._storage.mkdir = Mock()
-    wrapper.upload(Path("."), "root")
+    wrapper.upload(Path(""), "root")
     assert wrapper._storage.mkdir.mock_calls[0] == call(
-        Path(".").resolve().name,
+        Path("").resolve().name,
         parent_id="root"
     )
 

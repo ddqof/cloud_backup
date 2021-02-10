@@ -4,8 +4,8 @@ import sys
 
 from pathlib import Path
 from cloudbackup.exceptions import ApiResponseException
-from defaults import (DOWNLOAD_COMPLETED_MSG,
-                      UPLOAD_COMPLETED_MSG)
+from wrappers.defaults import (DOWNLOAD_COMPLETED_MSG,
+                               UPLOAD_COMPLETED_MSG)
 from arg_parser import parse_args
 from wrappers.gdrive_wrapper import GDriveWrapper
 from wrappers.yadisk_wrapper import YaDiskWrapper
