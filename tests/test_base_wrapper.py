@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch, call
-from _base_wrapper import BaseWrapper
+from wrappers._base_wrapper import BaseWrapper
 
 
 @pytest.fixture()

@@ -2,14 +2,14 @@ import errno
 import os
 
 from pathlib import PurePath, Path, PurePosixPath
-from _base_wrapper import BaseWrapper
+from wrappers._base_wrapper import BaseWrapper
 from cloudbackup.file_objects import YaDiskFile
 from cloudbackup.yadisk import YaDisk
 from defaults import (
     YADISK_SORT_KEYS,
     LIST_NEXT_PAGE_MSG,
 )
-from cli_msgs import YadiskDLMessage, ULMessage
+from wrappers.cli_msgs import YadiskDLMessage, ULMessage
 
 
 class YaDiskWrapper(BaseWrapper):

@@ -2,12 +2,12 @@ import pytest
 from collections import namedtuple
 from pathlib import Path
 from unittest.mock import Mock, call, patch
-from gdrive_wrapper import GDriveWrapper
+from wrappers.gdrive_wrapper import GDriveWrapper
 
 
 @pytest.fixture()
 def wrapper():
-    with patch("gdrive_wrapper.GDrive"):
+    with patch("wrappers.gdrive_wrapper.GDrive"):
         return GDriveWrapper()
 
 
@@ -177,7 +177,7 @@ def test_download_overwrites(tmp_path, wrapper):
     file.name = "testfile.txt"
     file.type = "file"
     wrapper._storage.download = Mock(return_value=b"erased data")
-    with patch("gdrive_wrapper.GdriveDLMessage"):
+    with patch("wrappers.gdrive_wrapper.GdriveDLMessage"):
         wrapper.download(file, tmp_path, ov=True)
         assert test_file.read_bytes() == b"erased data"
 

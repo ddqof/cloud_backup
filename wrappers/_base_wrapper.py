@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Union
 from pathlib import Path
-from cli_msgs import DeleteConfirm, DeleteMessage
+from wrappers.cli_msgs import DeleteConfirm, DeleteMessage
 from defaults import RM_ACCESS_DENIED_MSG
 
 

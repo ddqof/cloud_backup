@@ -1,9 +1,7 @@
 import errno
 import os
 import shutil
-from typing import Union
-
-from _base_wrapper import BaseWrapper
+from wrappers._base_wrapper import BaseWrapper
 from cloudbackup.file_objects import GDriveFile
 from defaults import (
     GDRIVE_SORT_KEYS,
@@ -11,8 +9,8 @@ from defaults import (
     LIST_NEXT_PAGE_MSG,
 )
 from cloudbackup.gdrive import GDrive
-from cli_msgs import GdriveDLMessage, ULMessage
-from pathlib import PurePath, Path
+from wrappers.cli_msgs import GdriveDLMessage, ULMessage
+from pathlib import Path
 
 
 class GDriveWrapper(BaseWrapper):
@@ -71,7 +69,7 @@ class GDriveWrapper(BaseWrapper):
         """
         Download file or directory from GoogleDrive storage. This method
         should print what file or dir is being downloading, build
-        correct download path, should remove local file before download
+        correct download path, remove local file before download
         if ov=True and correctly call storage.download method (storage
         method takes care about `file` arg).
         """
@@ -112,11 +110,6 @@ class GDriveWrapper(BaseWrapper):
         corresponding info about what file is uploading, determine
         what type of file is uploading and correctly calls
         storage.upload method.
-
-        P.S. os.walk returns root, dirs and filenames in not
-        alphabetic order so it is hard to test it behaviour of
-        this method. Due to this I use sorted(filenames) only for
-        better testing.
         """
         if not local_file.name:
             local_file = local_file.resolve()

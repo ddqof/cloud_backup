@@ -1,13 +1,11 @@
-from pathlib import Path
-
 import pytest
 from unittest.mock import Mock, call, patch
-from yadisk_wrapper import YaDiskWrapper
+from wrappers.yadisk_wrapper import YaDiskWrapper
 
 
 @pytest.fixture()
 def wrapper():
-    with patch("yadisk_wrapper.YaDisk"):
+    with patch("wrappers.yadisk_wrapper.YaDisk"):
         yield YaDiskWrapper()
 
 

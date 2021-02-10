@@ -7,8 +7,8 @@ from cloudbackup.exceptions import ApiResponseException
 from defaults import (DOWNLOAD_COMPLETED_MSG,
                       UPLOAD_COMPLETED_MSG)
 from arg_parser import parse_args
-from gdrive_wrapper import GDriveWrapper
-from yadisk_wrapper import YaDiskWrapper
+from wrappers.gdrive_wrapper import GDriveWrapper
+from wrappers.yadisk_wrapper import YaDiskWrapper
 
 
 def main():
