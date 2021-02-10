@@ -12,7 +12,6 @@ from cloudbackup.exceptions import (
 )
 from cloudbackup.yadisk import YaDisk
 from cloudbackup.file_objects import YaDiskFile
-from cloudbackup.tests.test_gdrive import _check_namedtuple_instance
 from cloudbackup.tests._yadisk_api_responses import (
     LSDIR_RESPONSE,
     LIST_FILES_RESPONSE
@@ -92,17 +91,12 @@ def test_lsdir_returns_page(yadisk):
         match_querystring=True,
         body=json.dumps(LSDIR_RESPONSE),
     )
-    dir_page = yadisk.lsdir("/")
-    _check_namedtuple_instance(dir_page, ["file_info", "files"])
-    assert isinstance(dir_page.file_info, YaDiskFile)
-    test_file = YaDiskFile(LSDIR_RESPONSE)
-    assert dir_page.file_info == test_file
-    assert isinstance(dir_page.files, list)
+    dir_files = yadisk.lsdir("/")
     files = [
         YaDiskFile(LSDIR_RESPONSE["_embedded"]["items"][0]),
         YaDiskFile(LSDIR_RESPONSE["_embedded"]["items"][1]),
     ]
-    assert dir_page.files == files
+    assert dir_files == files
     url_params["path"] = "/second_file.pdf"
     responses.add(
         responses.GET,
@@ -112,13 +106,8 @@ def test_lsdir_returns_page(yadisk):
         match_querystring=True,
         body=json.dumps(LSDIR_RESPONSE["_embedded"]["items"][1]),
     )
-    file_page = yadisk.lsdir("/second_file.pdf")
-    _check_namedtuple_instance(dir_page, ["file_info", "files"])
-    assert isinstance(file_page.file_info, YaDiskFile)
-    test_file = YaDiskFile(LSDIR_RESPONSE["_embedded"]["items"][1])
-    assert file_page.file_info == test_file
-    assert isinstance(file_page.files, list)
-    assert file_page.files == []
+    single_file_list = yadisk.lsdir("/second_file.pdf")
+    assert single_file_list == []
 
 
 @responses.activate

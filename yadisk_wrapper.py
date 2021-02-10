@@ -1,8 +1,9 @@
 import errno
 import os
 
-from _base_wrapper import BaseWrapper
 from pathlib import PurePath, Path, PurePosixPath
+from _base_wrapper import BaseWrapper
+from cloudbackup.file_objects import YaDiskFile
 from cloudbackup.yadisk import YaDisk
 from defaults import (
     YADISK_SORT_KEYS,
@@ -19,7 +20,11 @@ class YaDiskWrapper(BaseWrapper):
     def __init__(self):
         super().__init__(YaDisk())
 
-    def lsdir(self, path, order_key) -> None:
+    def lsdir(
+            self,
+            path: str,
+            order_key: str
+    ) -> None:
         """
         Prints content of `path`. Prints all files
         excluding directories if path is None.
@@ -63,34 +68,41 @@ class YaDiskWrapper(BaseWrapper):
             else:
                 break
 
-    def upload(self, filename, destination) -> None:
+    def upload(
+            self,
+            local_file: Path,
+            destination: str
+    ) -> None:
         """
         Upload file located at `filename` to `destination`. Prints absolute
          file path while uploading because of '.' path.
         """
-        file_path = Path(filename)
-        if file_path.is_file():
+        if not local_file.name:
+            local_file = local_file.resolve()
+        if destination.startswith("disk:/"):
+            normalized_dest = destination
+        else:
+            normalized_dest = "disk:" + destination
+        print(ULMessage(local_file).str_value())
+        normalized_dest = str(PurePosixPath(normalized_dest, local_file.name))
+        if local_file.is_file():
             self._put_file(
-                local_path=file_path,
-                destination=PurePosixPath(destination, file_path.name)
+                local_path=local_file,
+                destination=normalized_dest
             )
-        elif file_path.is_dir():
-            tree = os.walk(file_path)
-            for root, dirs, filenames in tree:
-                root_path = Path(root)
-                target = PurePosixPath(destination, root_path)
-                print(ULMessage(root).str_value())
-                self._storage.mkdir(target)
-                for filename in filenames:
-                    self._put_file(
-                        local_path=Path(root, filename),
-                        destination=PurePosixPath(str(target), filename)
-                    )
+        elif local_file.is_dir():
+            self._storage.mkdir(normalized_dest)
+            for child in local_file.iterdir():
+                self.upload(child, normalized_dest)
         else:
             raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), file_path)
+                errno.ENOENT, os.strerror(errno.ENOENT), local_file)
 
-    def download(self, file, local_destination, ov=False) -> None:
+    def download(
+            self, file: YaDiskFile,
+            local_destination: Path,
+            ov: bool = False
+    ) -> None:
         """
         Download file on remote to local_destination.
         """

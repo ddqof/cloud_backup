@@ -3,7 +3,6 @@ from typing import List
 
 import requests
 import mimetypes
-from collections import namedtuple
 from cloudbackup._authenticator import Authenticator
 from cloudbackup.exceptions import (
     ApiResponseException,

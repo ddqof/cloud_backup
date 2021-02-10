@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from typing import Union
+from pathlib import Path
 from cli_msgs import DeleteConfirm, DeleteMessage
 from defaults import RM_ACCESS_DENIED_MSG
 
@@ -8,16 +10,14 @@ class BaseWrapper(ABC):
     def __init__(self, storage):
         self._storage = storage
 
-    def _put_file(self, local_path, destination):
+    def _put_file(self, local_path: Path, destination: Union[str, None]):
         """
         Get upload link and then upload file raw binary data using this link.
         """
         link = self._storage.get_upload_link(local_path, destination)
-        with open(local_path, "rb") as f:
-            file_data = f.read()
-        self._storage.upload_file(link, file_data)
+        self._storage.upload_file(link, local_path.read_bytes())
 
-    def remove(self, file_id, permanently=False) -> None:
+    def remove(self, file_id: str, permanently=False) -> None:
         """
         Remove file or directory on GoogleDrive or YandexDisk storage.
         """
@@ -31,7 +31,7 @@ class BaseWrapper(ABC):
         else:
             raise PermissionError(RM_ACCESS_DENIED_MSG)
 
-    def get_file(self, file_id):
+    def get_file(self, file_id: str):
         """
         Gets file meta-information by file_id.
         """
@@ -46,5 +46,5 @@ class BaseWrapper(ABC):
         ...
 
     @abstractmethod
-    def upload(self, file_id, destination):
+    def upload(self, file, destination):
         ...

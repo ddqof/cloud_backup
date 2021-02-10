@@ -2,6 +2,7 @@
 
 import sys
 
+from pathlib import Path
 from cloudbackup.exceptions import ApiResponseException
 from defaults import (DOWNLOAD_COMPLETED_MSG,
                       UPLOAD_COMPLETED_MSG)
@@ -23,12 +24,12 @@ def main():
         elif args.operation == "dl":
             wrapper.download(
                 wrapper.get_file(args.remote_file),
-                local_destination=args.destination,
+                local_destination=Path(args.destination),
                 ov=args.overwrite
             )
             exit_msg = DOWNLOAD_COMPLETED_MSG
         elif args.operation == "ul":
-            wrapper.upload(args.local_file, args.destination)
+            wrapper.upload(Path(args.local_file), args.destination)
             exit_msg = UPLOAD_COMPLETED_MSG
         elif args.operation == "rm":
             wrapper.remove(args.remote_file, permanently=args.permanently)

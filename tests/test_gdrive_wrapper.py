@@ -1,4 +1,3 @@
-import shutil
 import pytest
 from collections import namedtuple
 from pathlib import Path
@@ -35,45 +34,6 @@ def ls_pages():
         Page([files[0]], None)
     ]
     return pages
-
-
-@pytest.fixture()
-def not_existing_file():
-    p = Path("testfile.txt")
-    if p.exists():
-        raise FileExistsError
-    yield p
-    p.unlink()
-
-
-@pytest.fixture()
-def not_existing_dir():
-    p = Path("test_dir")
-    if p.exists():
-        raise FileExistsError
-    yield p
-    shutil.rmtree(p)
-
-
-@pytest.fixture()
-def complex_dir(tmp_path):
-    file_1 = tmp_path / "file_1.txt"
-    file_2 = tmp_path / "file_2.txt"
-    file_1.touch()
-    file_2.touch()
-    inner_dir = tmp_path / "dir"
-    inner_dir.mkdir()
-    inner_file_1 = inner_dir / "inner_file_1.txt"
-    inner_file_2 = inner_dir / "inner_file_2.txt"
-    inner_file_1.touch()
-    inner_file_2.touch()
-    ComplexDir = namedtuple(
-        "ComplexDir",
-        ["path", "file_1", "file_2", "inner_dir",
-         "inner_file_1", "inner_file_2"]
-    )
-    return ComplexDir(tmp_path, file_1, file_2,
-                      inner_dir, inner_file_1, inner_file_2)
 
 
 def test_lsdir_with_file_id_calls_storage_method_correctly(wrapper):
@@ -155,7 +115,7 @@ def test_download_file_prints_correct_data(capsys, wrapper, not_existing_file):
     remote_target.type = "file"
     remote_target.name = not_existing_file.name
     wrapper._storage.download = Mock(return_value=b"any bytes")
-    wrapper.download(remote_target, ".")
+    wrapper.download(remote_target, Path("."))
     captured = capsys.readouterr()
     assert captured.out == f"Downloading: `{not_existing_file}`...\n"
 
@@ -168,7 +128,7 @@ def test_download_dir_prints_correct_data(
     remote_target.name = not_existing_dir.name
     wrapper._storage.download = Mock(return_value=b"hello world")
     wrapper._storage.lsdir.return_value = dl_page
-    wrapper.download(remote_target, ".")
+    wrapper.download(remote_target, Path("."))
     captured = capsys.readouterr()
     assert captured.out == (
         f"Downloading: `{not_existing_dir}`...\n"
@@ -189,7 +149,7 @@ def test_download_dir_happy_path(capsys, wrapper, not_existing_dir, dl_page):
     wrapper._storage.download = Mock(
         side_effect=[b"hello from 0", b"hello from 1"]
     )
-    wrapper.download(remote_target, ".")
+    wrapper.download(remote_target, Path("."))
     assert not_existing_dir.exists()
     inner_file_0 = Path(not_existing_dir, "test_file-0")
     inner_file_1 = Path(not_existing_dir, "test_file-1")
@@ -237,55 +197,21 @@ def test_upload_file_handles_simple_file_correctly(wrapper, tmp_path):
 
 def test_upload_resolves_dot_directory(wrapper, tmp_path):
     wrapper._storage.mkdir = Mock()
-    wrapper.upload(".", "root")
+    wrapper.upload(Path("."), "root")
     assert wrapper._storage.mkdir.mock_calls[0] == call(
         Path(".").resolve().name,
-        parent_id=None
+        parent_id="root"
     )
-
-
-def test_upload_handles_complex_structured_dir_correctly(
-        wrapper, tmp_path, complex_dir
-):
-    """
-    Tests checks that upload method calls storage.mkdir and
-    wrapper._put_file in particular order.
-
-    P.S. this test doesn't check that wrapper.upload method
-    correctly handles destination ids.
-    """
-    wrapper._storage.mkdir = Mock()
-    wrapper._put_file = Mock()
-    wrapper.upload(complex_dir.path, "root")
-    assert len(wrapper._storage.mkdir.mock_calls) == 2
-    assert wrapper._storage.mkdir.call_args_list[0].args[0] == \
-           complex_dir.path.name
-    assert wrapper._storage.mkdir.call_args_list[1].args[0] == \
-           complex_dir.inner_dir.name
-    assert len(wrapper._put_file.mock_calls) == 4
-    assert wrapper._put_file.call_args_list[0].kwargs["local_path"] == \
-           complex_dir.file_1
-    assert wrapper._put_file.call_args_list[1].kwargs["local_path"] == \
-           complex_dir.file_2
-    assert wrapper._put_file.call_args_list[2].kwargs["local_path"] == \
-           complex_dir.inner_file_1
-    assert wrapper._put_file.call_args_list[3].kwargs["local_path"] == \
-           complex_dir.inner_file_2
-
-
-def test_upload_dir_prints_correct_inf(wrapper, complex_dir, capsys):
-    wrapper._put_file = Mock()
-    wrapper.upload(complex_dir.path, "root")
-    captured = capsys.readouterr()
-    assert captured.out == f"Uploading: `{complex_dir.path}`...\n" \
-                           f"Uploading: `{complex_dir.file_1}`...\n" \
-                           f"Uploading: `{complex_dir.file_2}`...\n" \
-                           f"Uploading: `{complex_dir.inner_dir}`...\n" \
-                           f"Uploading: `{complex_dir.inner_file_1}`...\n" \
-                           f"Uploading: `{complex_dir.inner_file_2}`...\n"
 
 
 def test_upload_raises_file_not_found_err(wrapper, tmp_path):
     not_existing_file = tmp_path / "not_existing_file.txt"
     with pytest.raises(FileNotFoundError):
         wrapper.upload(not_existing_file, "root")
+
+
+def test_uploads_handles_complex_dir(wrapper):
+    """
+    Unreal to test due to Path.iterdir() arbitrary order.
+    """
+    pass

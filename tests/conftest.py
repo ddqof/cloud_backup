@@ -24,20 +24,31 @@ def not_existing_dir():
 
 @pytest.fixture()
 def complex_dir(tmp_path):
-    file_1 = tmp_path / "file_1.txt"
-    file_2 = tmp_path / "file_2.txt"
+    """
+    tmp_path/
+    |-- dir_1
+    |   |-- file_1.txt
+    |   `-- file_2.txt
+    |-- dir_2
+    |   `-- file_3.txt
+    `-- file_4.txt
+    """
+    dir_1 = tmp_path / "dir_1"
+    file_1 = dir_1 / "file_1.txt"
+    file_2 = dir_1 / "file_2.txt"
+    dir_2 = tmp_path / "dir_2"
+    file_3 = dir_2 / "file_3.txt"
+    file_4 = tmp_path / "file_4.txt"
+    dir_1.mkdir()
+    dir_2.mkdir()
     file_1.touch()
     file_2.touch()
-    inner_dir = tmp_path / "dir"
-    inner_dir.mkdir()
-    inner_file_1 = inner_dir / "inner_file_1.txt"
-    inner_file_2 = inner_dir / "inner_file_2.txt"
-    inner_file_1.touch()
-    inner_file_2.touch()
+    file_3.touch()
+    file_4.touch()
     ComplexDir = namedtuple(
         "ComplexDir",
-        ["path", "file_1", "file_2", "inner_dir",
-         "inner_file_1", "inner_file_2"]
+        ["path", "dir_1", "dir_2", "file_1", "file_2", "file_3", "file_4"]
     )
-    return ComplexDir(tmp_path, file_1, file_2,
-                      inner_dir, inner_file_1, inner_file_2)
+    return ComplexDir(
+        tmp_path, dir_1, dir_2, file_1, file_2, file_3, file_4
+    )

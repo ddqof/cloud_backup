@@ -1,7 +1,10 @@
 import errno
 import os
 import shutil
+from typing import Union
+
 from _base_wrapper import BaseWrapper
+from cloudbackup.file_objects import GDriveFile
 from defaults import (
     GDRIVE_SORT_KEYS,
     ABORTED_MSG,
@@ -20,7 +23,11 @@ class GDriveWrapper(BaseWrapper):
     def __init__(self):
         super().__init__(GDrive())
 
-    def lsdir(self, file_id, order_key) -> None:
+    def lsdir(
+            self,
+            file_id: str,
+            order_key: str
+    ) -> None:
         """
         Prints content of directory or file itself. Prints all files
         if file_id is not provided. Otherwise prints files page by page.
@@ -56,7 +63,11 @@ class GDriveWrapper(BaseWrapper):
             else:
                 break
 
-    def download(self, file, local_destination, ov=False) -> None:
+    def download(
+            self, file: GDriveFile,
+            local_destination: Path,
+            ov: bool = False
+    ) -> None:
         """
         Download file or directory from GoogleDrive storage. This method
         should print what file or dir is being downloading, build
@@ -91,7 +102,11 @@ class GDriveWrapper(BaseWrapper):
                 if next_page_token is None:
                     break
 
-    def upload(self, filename, parents) -> None:
+    def upload(
+            self,
+            local_file: Path,
+            parent_id: str
+    ) -> None:
         """
         Upload file or directory by path. This method should print
         corresponding info about what file is uploading, determine
@@ -103,28 +118,18 @@ class GDriveWrapper(BaseWrapper):
         this method. Due to this I use sorted(filenames) only for
         better testing.
         """
-        file_path = Path(filename)
-        if not file_path.name:
-            file_path = file_path.resolve()
-        if file_path.is_file():
-            print(ULMessage(file_path).str_value())
-            self._put_file(local_path=file_path, destination=parents)
-        elif file_path.is_dir():
-            parents = {}
-            tree = os.walk(file_path)
-            for root, dirs, filenames in tree:
-                root_path = PurePath(root)
-                parent_id = parents[root_path.parent] if parents else None
-                print(ULMessage(root).str_value())
-                folder_id = self._storage.mkdir(
-                    root_path.name,
+        if not local_file.name:
+            local_file = local_file.resolve()
+        print(ULMessage(local_file).str_value())
+        if local_file.is_file():
+            self._put_file(local_path=local_file, destination=parent_id)
+        elif local_file.is_dir():
+            folder_id = self._storage.mkdir(
+                    local_file.name,
                     parent_id=parent_id
                 )
-                for file in sorted(filenames):
-                    dest = Path(root, file)
-                    print(ULMessage(dest).str_value())
-                    self._put_file(local_path=dest, destination=folder_id)
-                parents[root_path] = folder_id
+            for child in local_file.iterdir():
+                self.upload(child, folder_id)
         else:
             raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), filename)
+                errno.ENOENT, os.strerror(errno.ENOENT), local_file)
