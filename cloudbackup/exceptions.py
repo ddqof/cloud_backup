@@ -17,3 +17,10 @@ class FileIsNotDownloadableException(Exception):
         """
         self.message = f"File: `{file}` isn't downloadable."
         super().__init__(self.message)
+
+
+class CredentialsNotFoundException(Exception):
+
+    def __init__(self, storage: str):
+        self.message = f"Credentials file not found for {storage}."
+        super(CredentialsNotFoundException, self).__init__(self.message)

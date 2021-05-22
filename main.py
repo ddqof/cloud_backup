@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 import sys
-
 from pathlib import Path
-from cloudbackup.exceptions import ApiResponseException
+
+from arg_parser import parse_args
+from cloudbackup.exceptions import ApiResponseException, CredentialsNotFoundException
 from wrappers.defaults import (DOWNLOAD_COMPLETED_MSG,
                                UPLOAD_COMPLETED_MSG)
-from arg_parser import parse_args
 from wrappers.gdrive_wrapper import GDriveWrapper
 from wrappers.yadisk_wrapper import YaDiskWrapper
 
@@ -14,11 +14,11 @@ from wrappers.yadisk_wrapper import YaDiskWrapper
 def main():
     exit_msg = None
     args = parse_args()
-    if args.storage == "gdrive":
-        wrapper = GDriveWrapper()
-    else:
-        wrapper = YaDiskWrapper()
     try:
+        if args.storage == "gdrive":
+            wrapper = GDriveWrapper()
+        else:
+            wrapper = YaDiskWrapper()
         if args.operation == "ls":
             wrapper.lsdir(args.remote_file, order_key=args.order_by)
         elif args.operation == "dl":
@@ -38,7 +38,9 @@ def main():
     except (ApiResponseException,
             FileExistsError,
             FileNotFoundError,
-            PermissionError) as e:
+            PermissionError,
+            CredentialsNotFoundException
+            ) as e:
         print(e)
         sys.exit(1)
     except KeyboardInterrupt:

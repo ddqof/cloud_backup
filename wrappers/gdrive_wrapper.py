@@ -1,16 +1,17 @@
 import errno
 import os
 import shutil
-from wrappers._base_wrapper import BaseWrapper
+from pathlib import Path
+
 from cloudbackup.file_objects import GDriveFile
+from cloudbackup.gdrive import GDrive
+from wrappers._base_wrapper import BaseWrapper
+from wrappers.cli_msgs import GdriveDLMessage, ULMessage
 from wrappers.defaults import (
     GDRIVE_SORT_KEYS,
     ABORTED_MSG,
     LIST_NEXT_PAGE_MSG,
 )
-from cloudbackup.gdrive import GDrive
-from wrappers.cli_msgs import GdriveDLMessage, ULMessage
-from pathlib import Path
 
 
 class GDriveWrapper(BaseWrapper):
@@ -62,7 +63,8 @@ class GDriveWrapper(BaseWrapper):
                 break
 
     def download(
-            self, file: GDriveFile,
+            self,
+            file: GDriveFile,
             local_destination: Path,
             ov: bool = False
     ) -> None:
@@ -118,9 +120,9 @@ class GDriveWrapper(BaseWrapper):
             self._put_file(local_path=local_file, destination=parent_id)
         elif local_file.is_dir():
             folder_id = self._storage.mkdir(
-                    local_file.name,
-                    parent_id=parent_id
-                )
+                local_file.name,
+                parent_id=parent_id
+            )
             for child in local_file.iterdir():
                 self.upload(child, folder_id)
         else:

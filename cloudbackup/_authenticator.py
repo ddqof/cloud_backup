@@ -1,12 +1,14 @@
-import json
 import datetime
+import json
+import os
 import pickle
 import re
-import os
 import socket
 import webbrowser
-import requests
 from urllib.parse import urlencode
+
+import requests
+
 from ._defaults import (
     GOOGLE_CREDENTIALS_PATH,
     DEFAULT_GOOGLE_TOKEN_PATH,
@@ -21,6 +23,7 @@ from ._defaults import (
     GDRIVE_OAUTH_LINK,
     YADISK_OAUTH_LINK
 )
+from .exceptions import CredentialsNotFoundException
 
 
 class Authenticator:
@@ -75,8 +78,11 @@ class Authenticator:
         """
         :return: token to access to Google Drive API
         """
-        with open(GOOGLE_CREDENTIALS_PATH) as credentials_file:
-            credentials = json.load(credentials_file)
+        try:
+            with open(GOOGLE_CREDENTIALS_PATH) as credentials_file:
+                credentials = json.load(credentials_file)
+        except FileNotFoundError:
+            raise CredentialsNotFoundException("GDrive")
         if os.path.exists(token_file_path):
             with open(token_file_path, "rb") as token_file:
                 token_data = pickle.load(token_file)
@@ -147,8 +153,11 @@ class Authenticator:
                 if token_data["expire_time"] > datetime.datetime.now():
                     return token_data["access_token"]
         else:
-            with open(YANDEX_CREDENTIALS_PATH) as credentials_file:
-                credentials = json.load(credentials_file)
+            try:
+                with open(YANDEX_CREDENTIALS_PATH) as credentials_file:
+                    credentials = json.load(credentials_file)
+            except FileNotFoundError:
+                raise CredentialsNotFoundException("YaDisk")
             keys = {
                 "response_type": "code",
                 "client_id": credentials["client_id"]
